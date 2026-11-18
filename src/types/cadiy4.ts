@@ -125,6 +125,19 @@ export interface LayerData {
   color?: ColorRGB;
 }
 
+export interface CutLayoutItem {
+  baseId: number;
+  partsId: string;
+  x: number;
+  z: number;
+}
+
+export interface CutListData {
+  cutWidthMm: number;
+  packingMode: string;
+  layouts: CutLayoutItem[];
+}
+
 export interface Cadiy4Data {
   version: number;
   thumbnail: string;
@@ -132,6 +145,6 @@ export interface Cadiy4Data {
   objects: CadiyObject[];
   layers?: LayerData[];
   snaps?: any[];
-  cutList?: any;
+  cutList?: CutListData;
   polygonMeshTable?: Record<string, any>;
 }
