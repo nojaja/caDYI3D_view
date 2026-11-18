@@ -26,16 +26,38 @@ export interface ColorRGBA extends ColorRGB {
   a?: number;
 }
 
+export interface BoundingBox3D {
+  min: Vector3;
+  max: Vector3;
+}
+
 export interface CameraData {
   position: Vector3;
   target: Vector3;
 }
 
 export interface StandardRef {
-  setId: number;
-  standardId: number;
+  setId: string | number;
+  standardId: string | number;
   name?: string;
   snapshotAt?: string;
+}
+
+export interface DimensionMeasure {
+  start: Vector3;
+  end: Vector3;
+  side?: Vector3;
+  offset?: number;
+  valueMm: number;
+}
+
+export interface SourceMaterial {
+  type: string;
+  standardSize?: Vector3;
+  color?: ColorRGB;
+  commentText?: string;
+  specificGravity?: number;
+  textureId?: number;
 }
 
 export type ObjectType =
@@ -47,7 +69,13 @@ export type ObjectType =
   | 'comment'
   | 'textBoard'
   | 'protractor'
-  | 'polygonMesh'
+  | 'waveBoard'
+  | 'tube'
+  | 'polygon'
+  | 'picture'
+  | 'boolean'
+  | 'screw'
+  | 'steelProfile'
   | string;
 
 export interface CadiyObjectBase {
@@ -66,6 +94,9 @@ export interface CadiyObjectBase {
   displayId?: number;
   type: ObjectType;
   remarks?: string;
+  rotationDeg?: Vector3;
+  worldBounds?: BoundingBox3D;
+  noAggregated?: boolean;
 }
 
 export interface LumberObject extends CadiyObjectBase {
@@ -74,6 +105,7 @@ export interface LumberObject extends CadiyObjectBase {
   standardRef?: StandardRef;
   unitPrice?: number;
   specificGravity?: number;
+  legacyStandardSize?: Vector3;
 }
 
 export interface BoardObject extends CadiyObjectBase {
@@ -82,11 +114,14 @@ export interface BoardObject extends CadiyObjectBase {
   standardRef?: StandardRef;
   unitPrice?: number;
   specificGravity?: number;
+  legacyStandardSize?: Vector3;
 }
 
 export interface CylinderObject extends CadiyObjectBase {
   type: 'cylinder' | 'roundBoard';
+  unitPrice?: number;
   specificGravity?: number;
+  legacyStandardSize?: Vector3;
 }
 
 export interface DimensionObject extends CadiyObjectBase {
@@ -96,6 +131,11 @@ export interface DimensionObject extends CadiyObjectBase {
   lineWidth?: number;
   arrowType?: 'inside' | 'outside' | string;
   textVisible?: boolean;
+  valuePosition?: string;
+  symbol?: string;
+  fontSize?: number;
+  billboard?: boolean;
+  measure?: DimensionMeasure;
 }
 
 export interface TextBoardObject extends CadiyObjectBase {
@@ -107,6 +147,91 @@ export interface TextBoardObject extends CadiyObjectBase {
   italic?: boolean;
   backgroundColor?: ColorRGBA;
   frameVisible?: boolean;
+  contentRotation?: number;
+}
+
+export interface CommentObject extends CadiyObjectBase {
+  type: 'comment';
+  text?: string;
+  arrowPoint?: Vector3;
+  fontSize?: number;
+  backgroundColor?: ColorRGBA;
+  billboard?: boolean;
+}
+
+export interface ProtractorObject extends CadiyObjectBase {
+  type: 'protractor';
+  angle?: number;
+  linePattern?: number;
+  auxLinePattern?: number;
+  lineWidth?: number;
+  arrowType?: string;
+  textVisible?: boolean;
+  fontSize?: number;
+  billboard?: boolean;
+}
+
+export interface WaveBoardObject extends CadiyObjectBase {
+  type: 'waveBoard';
+  thickness?: number;
+  subType?: string;
+}
+
+export interface TubeObject extends CadiyObjectBase {
+  type: 'tube';
+  thickness?: number;
+  subType?: string;
+}
+
+export interface PolygonObject extends CadiyObjectBase {
+  type: 'polygon';
+  modelName?: string;
+  meshRef?: string;
+  weightG?: number;
+  unitPrice?: number;
+  snapVertices?: Vector3[];
+  vertices?: any[] | string;
+  faces?: any[] | string;
+}
+
+export interface PictureObject extends CadiyObjectBase {
+  type: 'picture';
+  imageBase64?: string;
+  imageMimeType?: string;
+  aspectRatioFixed?: boolean;
+  aspectRatio?: number;
+  dispPattern?: number;
+  contentRotation?: number;
+}
+
+export interface BooleanObject extends CadiyObjectBase {
+  type: 'boolean';
+  vertices?: any[];
+  faces?: any[];
+  sourceMaterials?: SourceMaterial[];
+}
+
+export interface ScrewObject extends CadiyObjectBase {
+  type: 'screw';
+  diameterIndex?: number;
+  screwLength?: number;
+  layout?: string;
+  orientation?: string;
+  screwType?: string;
+  showDimension?: boolean;
+  screwColor?: string;
+  lineColor?: string;
+  linePattern1?: number;
+  linePattern2?: number;
+  lineWidth?: number;
+  screwPosition?: number;
+}
+
+export interface SteelProfileObject extends CadiyObjectBase {
+  type: 'steelProfile';
+  shape?: string;
+  material?: string;
+  thickness?: number;
 }
 
 export type CadiyObject =
@@ -115,6 +240,15 @@ export type CadiyObject =
   | CylinderObject
   | DimensionObject
   | TextBoardObject
+  | CommentObject
+  | ProtractorObject
+  | WaveBoardObject
+  | TubeObject
+  | PolygonObject
+  | PictureObject
+  | BooleanObject
+  | ScrewObject
+  | SteelProfileObject
   | CadiyObjectBase;
 
 export interface LayerData {
@@ -123,6 +257,8 @@ export interface LayerData {
   visible: boolean;
   locked: boolean;
   color?: ColorRGB;
+  colorMode?: boolean;
+  parentId?: number | null;
 }
 
 export interface CutLayoutItem {
@@ -138,13 +274,27 @@ export interface CutListData {
   layouts: CutLayoutItem[];
 }
 
+export interface PolygonMeshItem {
+  meshId: string;
+  vertices: number[];
+  faces: number[];
+}
+
+export interface PolygonMesh {
+  vertices?: number[];
+  faces?: number[];
+}
+
 export interface Cadiy4Data {
   version: number;
   thumbnail: string;
+  revision?: number;
   camera: CameraData;
   objects: CadiyObject[];
-  layers?: LayerData[];
+  layers: LayerData[];
+  activeLayerId?: number;
+  selectedIds?: string[];
   snaps?: any[];
   cutList?: CutListData;
-  polygonMeshTable?: Record<string, any>;
+  polygonMeshTable?: PolygonMeshItem[] | Record<string, PolygonMesh>;
 }

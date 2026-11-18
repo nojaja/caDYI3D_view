@@ -11,12 +11,60 @@
       <!-- 3Dレンダリング用コンテナ -->
       <div id="viewer-container"></div>
 
-      <!-- トップバー -->
+      <!-- 材料取り図表示用コンテナ -->
+      <div id="cutlist-view-container" class="cutlist-view-container" style="display: none;">
+        <div class="cutlist-header">
+          <div class="cutlist-title">材料取り図 (木取り図)</div>
+          <div class="cutplan-cutwidth-info">鋸刃切り代: <span id="cutplan-cutwidth-val">3</span>mm</div>
+        </div>
+        <div id="cutlist-sheets-container" class="cutlist-sheets-container"></div>
+      </div>
+
+      <!-- 三面図表示用コンテナ -->
+      <div id="threeview-container" class="threeview-container" style="display: none;">
+        <div class="threeview-grid">
+          <div id="threeview-top" class="threeview-viewport">
+            <span class="view-label">平面図 (上面)</span>
+            <div class="threeview-canvas-wrapper" id="canvas-wrapper-top"></div>
+          </div>
+          <!-- 右上: 三面図情報カード (第三角法) -->
+          <div class="threeview-info-card">
+            <div class="threeview-info-title">三面図 (第三角法)</div>
+            <div class="threeview-info-desc">
+              平面図・正面図・側面図を歪みのない平行投影で同時表示しています。<br>
+              ホイール操作で全ビューが連動して拡大・縮小します。
+            </div>
+          </div>
+          <div id="threeview-front" class="threeview-viewport">
+            <span class="view-label">正面図</span>
+            <div class="threeview-canvas-wrapper" id="canvas-wrapper-front"></div>
+          </div>
+          <div id="threeview-side" class="threeview-viewport">
+            <span class="view-label">側面図 (右側面)</span>
+            <div class="threeview-canvas-wrapper" id="canvas-wrapper-side"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- トップバー (ヘッダ領域) -->
       <header class="top-bar">
+        <!-- 左: brand-title -->
         <div class="brand">
           <span class="brand-title">caDIY3D Web Viewer</span>
           <span class="brand-badge">3D</span>
         </div>
+
+        <!-- 中央: モデル名称 -->
+        <div id="model-title" class="model-title" title="モデル名称">未読み込み</div>
+
+        <!-- 中央右: セグメントコントロール (表示モード切替) -->
+        <div id="view-mode-selector" class="segmented-control" role="tablist">
+          <button id="mode-btn-3d" class="segment-btn active" role="tab" aria-selected="true">3Dview</button>
+          <button id="mode-btn-cutlist" class="segment-btn" role="tab" aria-selected="false">材料取り図</button>
+          <button id="mode-btn-threeview" class="segment-btn" role="tab" aria-selected="false">三面図</button>
+        </div>
+
+        <!-- 右: ファイルを開くボタン (btn-sampleは廃止) -->
         <div class="top-actions">
           <input type="file" id="file-input" accept=".cadiy4,application/json" style="display: none;" />
           <button id="btn-open-file" class="btn btn-primary" title="ファイルを選択して開く">
@@ -25,21 +73,28 @@
             </svg>
             開く
           </button>
-          <button id="btn-sample" class="btn" title="サンプルラックを読み込む">
-            ラック
-          </button>
         </div>
       </header>
 
-      <!-- パーツインスペクタ (タップ時に表示) -->
+      <!-- 画面左側: レイヤー一覧パネル -->
+      <div id="layer-panel" class="layer-panel">
+        <div class="layer-panel-header">
+          <span class="layer-panel-title">レイヤー一覧</span>
+        </div>
+        <div id="layer-tree-container" class="layer-tree-container"></div>
+      </div>
+
+      <!-- 画面右側: オブジェクト詳細ビュー (インスペクタ) -->
       <div id="inspector-card" class="inspector-card">
-        <button id="btn-close-inspector" class="inspector-close" aria-label="閉じる">&times;</button>
-        <div id="inspector-title" class="inspector-title">パーツ情報</div>
+        <div class="inspector-header">
+          <div id="inspector-title" class="inspector-title">オブジェクトプロパティ</div>
+          <button id="btn-close-inspector" class="inspector-close" aria-label="閉じる">&times;</button>
+        </div>
         <div id="inspector-detail" class="inspector-detail"></div>
       </div>
 
-      <!-- 下部コントロールツールバー (視点操作) -->
-      <nav class="bottom-controls">
+      <!-- 下部コントロールツールバー (3Dview 視点操作) -->
+      <nav id="bottom-controls" class="bottom-controls">
         <button id="btn-fit" class="control-btn" title="全体表示">全体</button>
         <button id="btn-iso" class="control-btn" title="アイソメ視点">等角</button>
         <button id="btn-front" class="control-btn" title="正面視点">正面</button>

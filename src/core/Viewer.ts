@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Cadiy4Data, CadiyObject } from '../types/cadiy4';
 import { ModelBuilder } from '../builder/ModelBuilder';
+import { OrthographicViewManager } from './OrthographicViewManager';
+import { ViewMode } from './ViewModeManager';
 
 export interface ViewerOptions {
   container: HTMLElement;
@@ -15,6 +17,8 @@ export class Viewer {
   private renderer: THREE.WebGLRenderer;
   private controls: OrbitControls;
   private modelBuilder: ModelBuilder;
+  private orthoViewManager = new OrthographicViewManager();
+  private viewMode: ViewMode = '3d';
   private currentModelGroup: THREE.Group | null = null;
   private raycaster = new THREE.Raycaster();
   private mouse = new THREE.Vector2();
@@ -144,8 +148,82 @@ export class Viewer {
 
     this.controls.update();
 
+    // 三面図 (Orthographic) 用カメラの初期化
+    const box = new THREE.Box3().setFromObject(this.currentModelGroup);
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+    const frustum = this.orthoViewManager.calculateFrustum(box, 1.0);
+    this.orthoViewManager.createCameras(center, 1.5, frustum);
+
     // グローバル完了フラグ（E2E自動テスト判定用）
     (window as any).__VIEWER_READY__ = true;
+  }
+
+  /**
+   * 表示モード(3Dview / 材料取り図 / 三面図)の切り替え
+   */
+  public setViewMode(mode: ViewMode): void {
+    this.viewMode = mode;
+    if (mode === '3d') {
+      this.renderer.setScissorTest(false);
+      this.renderer.setViewport(0, 0, this.container.clientWidth, this.container.clientHeight);
+    }
+  }
+
+  /**
+   * 三面図のズーム倍率を変更
+   */
+  public zoomThreeView(deltaFactor: number): void {
+    const current = this.orthoViewManager.getZoom();
+    const newZoom = Math.max(0.2, Math.min(10.0, current * deltaFactor));
+    this.orthoViewManager.setZoom(newZoom);
+  }
+
+  /**
+   * レイヤー単位の表示/非表示を3Dシーンに適用する
+   */
+  public setLayerVisibility(layerId: number, visible: boolean): void {
+    if (!this.currentModelGroup) return;
+
+    this.currentModelGroup.traverse((child) => {
+      const obj = child.userData?.cadiyObject as CadiyObject | undefined;
+      if (obj) {
+        const objLayerId = obj.layerId !== undefined ? obj.layerId : 0;
+        if (objLayerId === layerId) {
+          child.visible = visible;
+        }
+      }
+    });
+  }
+
+  /**
+   * オブジェクトIDからCadiyObjectを検索する
+   */
+  public getObjectById(id: string): CadiyObject | null {
+    if (!this.currentModelGroup) return null;
+
+    let found: CadiyObject | null = null;
+    this.currentModelGroup.traverse((child) => {
+      const obj = child.userData?.cadiyObject as CadiyObject | undefined;
+      if (obj && obj.id === id) {
+        found = obj;
+      }
+    });
+    return found;
+  }
+
+  /**
+   * 外部(UI等)からオブジェクトを選択状態にする
+   */
+  public selectObjectById(id: string | null): void {
+    if (!id) {
+      if (this.onObjectSelected) this.onObjectSelected(null);
+      return;
+    }
+    const obj = this.getObjectById(id);
+    if (this.onObjectSelected) {
+      this.onObjectSelected(obj);
+    }
   }
 
   /**
@@ -259,8 +337,76 @@ export class Viewer {
 
   private animate(): void {
     this.animationFrameId = requestAnimationFrame(this.animate);
-    this.controls.update();
-    this.renderer.render(this.scene, this.camera);
+
+    if (this.viewMode === 'threeView') {
+      this.renderThreeView();
+    } else {
+      this.renderer.setScissorTest(false);
+      this.renderer.setViewport(0, 0, this.container.clientWidth, this.container.clientHeight);
+      this.controls.update();
+      this.renderer.render(this.scene, this.camera);
+    }
+  }
+
+  /**
+   * 三面図 (Orthographic 3-View) のマルチビューポートレンダリング
+   */
+  private renderThreeView(): void {
+    const topEl = document.getElementById('threeview-top');
+    const frontEl = document.getElementById('threeview-front');
+    const sideEl = document.getElementById('threeview-side');
+
+    if (!topEl || !frontEl || !sideEl) return;
+
+    const cameras = this.orthoViewManager.getCameras();
+    if (!cameras) return;
+
+    const containerRect = this.container.getBoundingClientRect();
+
+    this.renderer.setScissorTest(true);
+
+    // 全体背景を一旦クリア
+    this.renderer.setClearColor(0xf4f6f8, 1.0);
+    this.renderer.setViewport(0, 0, this.container.clientWidth, this.container.clientHeight);
+    this.renderer.setScissor(0, 0, this.container.clientWidth, this.container.clientHeight);
+    this.renderer.clear();
+
+    // 1. 平面図 (Top)
+    this.renderSubViewport(topEl, containerRect, cameras.top);
+
+    // 2. 正面図 (Front)
+    this.renderSubViewport(frontEl, containerRect, cameras.front);
+
+    // 3. 側面図 (Side)
+    this.renderSubViewport(sideEl, containerRect, cameras.side);
+  }
+
+  private renderSubViewport(
+    el: HTMLElement,
+    containerRect: DOMRect,
+    camera: THREE.OrthographicCamera
+  ): void {
+    const rect = el.getBoundingClientRect();
+
+    // WebGL座標系 (下から上)
+    const left = rect.left - containerRect.left;
+    const bottom = containerRect.bottom - rect.bottom;
+    const width = rect.width;
+    const height = rect.height;
+
+    if (width <= 0 || height <= 0) return;
+
+    this.renderer.setViewport(left, bottom, width, height);
+    this.renderer.setScissor(left, bottom, width, height);
+
+    // ビューポート背景をクリア
+    this.renderer.setClearColor(0xffffff, 1.0);
+    this.renderer.clear();
+
+    // アスペクト比を更新
+    this.orthoViewManager.updateCameraAspect(camera, width / height);
+
+    this.renderer.render(this.scene, camera);
   }
 
   public dispose(): void {

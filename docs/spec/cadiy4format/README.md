@@ -28,15 +28,18 @@
 {
   "version": 1,
   "thumbnail": "data:image/webp;base64,...",
+  "revision": 1795010275186,
   "camera": {
     "position": { "x": 2.677, "y": 2.408, "z": 2.620 },
     "target": { "x": 0.062, "y": 0.316, "z": 0.005 }
   },
   "objects": [ ... ],
   "layers": [ ... ],
+  "activeLayerId": 1,
+  "selectedIds": [ "d43a3488-4b42-4b4e-93c7-7cc5ac65bf40" ],
   "snaps": [],
   "cutList": { ... },
-  "polygonMeshTable": { ... }
+  "polygonMeshTable": [ ... ]
 }
 ```
 
@@ -44,28 +47,33 @@
 | :--- | :--- | :---: | :--- |
 | `version` | `integer` | 必須 | ファイルフォーマットのバージョン番号。現在は `1`。 |
 | `thumbnail` | `string` | 必須 | 3Dビューのサムネイル画像。WebP 形式の Base64 Data URL（空文字も可）。 |
+| `revision` | `integer` / `number` | 任意 | シーン編集のリビジョン番号または更新タイムスタンプ。 |
 | `camera` | `object` | 必須 | 3Dビューポートのカメラ視点座標 (`position`) と注視点 (`target`)。 |
-| `objects` | `array` | 必須 | シーン内に配置されているすべてのパーツ、図形、注釈、寸法線のリスト。 |
+| `objects` | `array` | 必須 | シーン内に配置されているすべてのパーツ、図形、金具、画像、注釈、寸法線のリスト。 |
 | `layers` | `array` | 必須 | レイヤー（フォルダ）の階層構造定義。 |
+| `activeLayerId` | `integer` | 任意 | 現在編集対象としてアクティブになっているレイヤーID。 |
+| `selectedIds` | `array<string>` | 任意 | ビューポート上で現在選択状態にあるオブジェクトのUUID配列。 |
 | `snaps` | `array` | 任意 | スナップ機能の設定・拘束情報。通常は空配列 `[]`。 |
 | `cutList` | `object` | 任意 | 木取り図の計算パラメータおよび原木へのパーツ配置情報。 |
-| `polygonMeshTable` | `object` | 任意 | 既製パーツや3Dプリンタモデル等のポリゴン頂点・面定義テーブル。 |
+| `polygonMeshTable` | `array` / `object` | 任意 | 既製パーツや3Dプリンタモデル等のポリゴン頂点・面定義テーブル（配列またはオブジェクト辞書）。 |
 
 ---
 
 ## 3. オブジェクト (`objects[*]`) 仕様
 
 ### 3.1 共通フィールド
-すべてのオブジェクト（木材、板材、寸法線、注釈など）が共通して持つフィールドです。
+すべてのオブジェクト（木材、板材、寸法線、金具、画像、注釈など）が共通して持つ基本フィールドです。
 
 | フィールド名 | 型 | 説明 |
 | :--- | :--- | :--- |
 | `id` | `string` | 一意の識別子（UUID v4 または `legacy-XXX`）。 |
-| `name` | `string` | オブジェクトの基本名称・規格名（例: `"SPF 2x2材"`, `"寸法線"`）。 |
+| `name` | `string` | オブジェクトの基本名称・規格名（例: `"SPF 2x2材"`, `"寸法線"`, `"蝶番32mm"`）。 |
 | `partName` | `string` | オプション。ユーザーが付与した個別パーツ名（例: `"脚 (左前)"`, `"天板"`）。 |
 | `position` | `Vector3` | ワールド座標系におけるパーツバウンディングボックスの中心位置 (`x, y, z`) [m]。 |
 | `quaternion` | `Quaternion` | パーツの姿勢を表す四元数 (`x, y, z, w`)。 |
-| `size` | `Vector3` | パーツのローカル座標系における寸法 (`x, y, z`) [m]。<br>・角材/円柱: `z` が長さ、`x, y` が断面寸法<br>・板材: `y` が板厚、`x` が幅、`z` が長さ |
+| `size` | `Vector3` | パーツのローカル座標系における寸法 (`x, y, z`) [m]。<br>・角材/円柱: `z` が長さ、`x, y` が断面寸法<br>・板材: `y` が板厚、`x` が幅、`z` が長さ<br>・画像: `y` が0、`x` が幅、`z` が高さ |
+| `rotationDeg` | `Vector3` | パーツのオイラー角回転度数 (`x, y, z`) [deg]。 |
+| `worldBounds` | `BoundingBox3D` | ワールド座標系における軸平行境界ボックス (`min, max`) [m]。 |
 | `visible` | `boolean` | 表示 / 非表示フラグ。 |
 | `locked` | `boolean` | 編集ロックフラグ。 |
 | `groupId` | `integer` | グループID（未グループ化は `0`）。 |
@@ -73,6 +81,7 @@
 | `color` | `ColorRGB` | 基本色 (`r, g, b` 各 0.0〜1.0)。 |
 | `textureId` | `integer` | 木目などのテクスチャ番号（0: 単色、1: 木材木目、2: 板材木目 等）。 |
 | `displayId` | `integer` | ユーザー画面に表示される識別番号（通し番号）。 |
+| `noAggregated` | `boolean` | 材料取り図（木取り図）やBOM集計対象から除外するかどうかのフラグ。 |
 | `type` | `string` | オブジェクトの種別（下記参照）。 |
 
 ---
@@ -86,12 +95,50 @@
 - `unitPrice`: 原木単価（円）。
 - `specificGravity`: 比重（SPF材は約 `0.4`）。
 - `remarks`: 規格備考（例: `"38×38×1820mm (6F)"`）。
+- `legacyStandardSize`: 旧バージョン規格寸法 (`Vector3`)。
 
 #### 2. `cylinder` (円柱・丸棒) / `roundBoard` (円形板)
 丸棒や丸板の材料です。
+- `unitPrice`: 原木単価（円）。
 - `specificGravity`: 比重。
+- `remarks`: 備考。
 
-#### 3. `dimension` (寸法線)
+#### 3. `picture` (画像・参考写真)
+3D空間上に配置される下絵・設計参考写真・テクスチャボードです。
+- `imageBase64`: Base64エンコードされた画像バイナリデータ文字列。
+- `imageMimeType`: 画像のMIME形式（`"image/jpeg"`, `"image/png"`, `"image/webp"` 等）。
+- `aspectRatioFixed`: 縦横比固定フラグ（`boolean`）。
+- `aspectRatio`: 画像の縦横比（`width / height`）。
+- `dispPattern`: 表示パターンフラグ（片面/両面表示等）。
+- `contentRotation`: 画像の回転角度（`0, 90, 180, 270`）。
+
+#### 4. `boolean` (ブーリアン加工パーツ)
+切削・差分・結合加工が行われた立体パーツです。
+- `vertices`: 加工後の頂点リスト (`Vector3[]` または数値配列)。
+- `faces`: 加工後の面構成データ (`PolygonFace[]` または数値配列)。
+- `sourceMaterials`: 加工元の母材定義（`type`, `standardSize`, `color`, `commentText`, `specificGravity`, `textureId`）。
+
+#### 5. `screw` (ビス・木ネジ・接合金具)
+木材同士を接合するためのコーススレッドやビスです。
+- `diameterIndex`: ビスの呼び径インデックス（例: `6`=3.8mm, `8`=4.2mm）。
+- `screwLength`: ネジの長さ [m]（例: `0.04`=40mm）。
+- `layout`: ネジ配置パターン（`"layout1"`, `"layout2"`, `"layout3A"`, `"layout4"` 等）。
+- `orientation`: 配置方向（`"horizontal"`, `"vertical"`）。
+- `screwType`: ファスナー種別（`"screw"`, `"bolt"` 等）。
+- `showDimension`: 寸法線表示の有無（`boolean`）。
+- `screwColor`: ネジ頭/本体のカラーコード（例: `"#c0c0c0"`）。
+- `lineColor`: 補助線カラーコード（例: `"#000000"`）。
+- `linePattern1`, `linePattern2`: 軸線および補助線の線種。
+- `lineWidth`: 線の太さ。
+- `screwPosition`: ビス位置オフセット。
+
+#### 6. `steelProfile` (鋼材・形鋼・アングル・フラットバー)
+金属製フレームや金具部材です。
+- `shape`: 断面形状（`"flatBar"`, `"angle"`, `"squarePipe"`, `"roundPipe"` 等）。
+- `material`: 材質（`"steel"`, `"alumi"`, `"stainless"` 等）。
+- `thickness`: 板厚 [m]（例: `0.003`=3mm）。
+
+#### 7. `dimension` (寸法線)
 3D空間上に配置される測定寸法線です。
 - `linePattern`: 寸法線の線種（`0`: 実線）。
 - `auxLinePattern`: 補助引き出し線の線種（`0`: 実線）。
@@ -102,8 +149,9 @@
 - `symbol`: 寸法値のプレフィックス記号（例: `""`, `"φ"`, `"R"`）。
 - `fontSize`: フォントサイズ（例: `24`）。
 - `billboard`: 常にカメラ方向を向くかどうかのフラグ。
+- `measure`: 詳細測定パラメータ (`start`, `end`, `side`, `offset`, `valueMm`)。
 
-#### 4. `textBoard` (看板・タイトル板)
+#### 8. `textBoard` (看板・タイトル板)
 平面プレート上にテキストを表示する注釈です。
 - `text`: 表示文字列。
 - `fontSize`: フォントサイズ。
@@ -113,7 +161,7 @@
 - `frameVisible`: 外枠線の表示フラグ。
 - `contentRotation`: 文字の回転角度（`0, 90, 180, 270`）。
 
-#### 5. `comment` (吹き出し)
+#### 9. `comment` (吹き出し)
 特定箇所を矢印で指す引き出し注釈です。
 - `text`: コメント文字列。
 - `arrowPoint`: 矢印の先端が指す座標 (`Vector3`)。
@@ -121,21 +169,24 @@
 - `backgroundColor`: 背景色 (`ColorRGBA`)。
 - `billboard`: カメラ追従フラグ。
 
-#### 6. `protractor` (分度器)
+#### 10. `protractor` (分度器)
 角度を表示する注釈です。
 - `angle`: 計測された角度（度数法、例: `90`）。
 - `linePattern`, `lineWidth`, `arrowType`, `textVisible`, `fontSize`, `billboard`。
 
-#### 7. `waveBoard` (波板) / `tube` (パイプ)
+#### 11. `waveBoard` (波板) / `tube` (パイプ)
 DIY特殊素材です。
 - `thickness`: 素材の厚み [m]。
 - `subType`: サブタイプ識別子（波板: `"sineSmall"` 等、パイプ: `"pvc"` 等）。
 
-#### 8. `polygon` (既製パーツ・3Dモデル)
+#### 12. `polygon` (既製パーツ・3Dモデル)
 金具（丁番・L字金具）や人形、3Dプリンタパーツなどです。
 - `modelName`: 参照モデルファイル名。
 - `meshRef`: `polygonMeshTable` 内のキー。
 - `weightG`: 重量 [g]。
+- `unitPrice`: 金具単価（円）。
+- `snapVertices`: スナップ点頂点座標リスト (`Vector3[]`)。
+- `vertices`, `faces`: インラインメッシュ頂点・面データ。
 
 ---
 
@@ -163,7 +214,34 @@ DIY特殊素材です。
 
 ---
 
-## 5. 材料取り図（木取り図）データ (`cutList`) 仕様
+## 5. ポリゴンメッシュテーブル (`polygonMeshTable`) 仕様
+
+3Dパーツのポリゴン形状データを保持します。`.cadiy4` では以下の2通りの形式を許容します。
+
+### 配列形式（実 autosave 形式）:
+```json
+[
+  {
+    "meshId": "大人170cm|1006.7 x 1700 x 78|Doll Model/Adult 170cm.dmesh",
+    "vertices": [ 0.12, 1.70, ... ],
+    "faces": [ 0, 1, 2, ... ]
+  }
+]
+```
+
+### オブジェクト辞書形式:
+```json
+{
+  "mesh_uuid_or_name": {
+    "vertices": [ ... ],
+    "faces": [ ... ]
+  }
+}
+```
+
+---
+
+## 6. 材料取り図（木取り図）データ (`cutList`) 仕様
 
 caDIY3D の画面上で「材料取り図」を一度でも表示・計算すると、プロジェクトファイル内にパーツの配置レイアウト結果が `cutList` として保存されます。（未計算時は `layouts: []` となります）
 
@@ -188,7 +266,7 @@ caDIY3D の画面上で「材料取り図」を一度でも表示・計算する
 }
 ```
 
-### 5.1 フィールド一覧
+### 6.1 フィールド一覧
 
 | フィールド名 | 型 | 必須 | 説明 |
 | :--- | :--- | :---: | :--- |
@@ -196,7 +274,7 @@ caDIY3D の画面上で「材料取り図」を一度でも表示・計算する
 | `packingMode` | `string` | 必須 | 母材へのパーツ詰め込み・パッキング方式（例: `"adjacent"` 隣接配置）。 |
 | `layouts` | `array` | 必須 | 母材への各パーツ配置情報のリスト。 |
 
-### 5.2 レイアウト情報 (`layouts[*]`)
+### 6.2 レイアウト情報 (`layouts[*]`)
 
 | フィールド名 | 型 | 必須 | 説明 |
 | :--- | :--- | :---: | :--- |
@@ -204,4 +282,3 @@ caDIY3D の画面上で「材料取り図」を一度でも表示・計算する
 | `partsId` | `string` | 必須 | 配置対象オブジェクトの ID（`objects[*].id` を参照する UUID）。 |
 | `x` | `number` | 必須 | 母材上の X 軸オフセット座標 [m]。角材や丸棒等の 1D レイアウト時は `0`、板材等の 2D レイアウト時は幅方向の配置位置。 |
 | `z` | `number` | 必須 | 母材上の Z 軸オフセット座標（長手方向の配置位置）[m]。前のパーツの長さ＋切り代（`cutWidthMm`）の累積オフセット。 |
-

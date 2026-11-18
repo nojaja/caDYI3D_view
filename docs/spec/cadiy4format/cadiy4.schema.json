@@ -22,12 +22,16 @@
       "type": "string",
       "description": "Data URL containing a base64-encoded WebP thumbnail of the scene (e.g. 'data:image/webp;base64,...'). May be empty."
     },
+    "revision": {
+      "type": ["integer", "number"],
+      "description": "Sequential edit revision counter or timestamp of the scene state."
+    },
     "camera": {
       "$ref": "#/definitions/Camera"
     },
     "objects": {
       "type": "array",
-      "description": "List of 3D objects, materials, dimensions, and annotations in the scene.",
+      "description": "List of 3D objects, materials, dimensions, fasteners, images, and annotations in the scene.",
       "items": {
         "$ref": "#/definitions/SceneObject"
       }
@@ -39,6 +43,17 @@
         "$ref": "#/definitions/Layer"
       }
     },
+    "activeLayerId": {
+      "type": "integer",
+      "description": "Identifier of the currently active/selected layer for authoring."
+    },
+    "selectedIds": {
+      "type": "array",
+      "description": "List of UUIDs of objects currently selected in the viewport.",
+      "items": {
+        "type": "string"
+      }
+    },
     "snaps": {
       "type": "array",
       "description": "Snap point configurations or constraints.",
@@ -48,22 +63,34 @@
       "$ref": "#/definitions/CutList"
     },
     "polygonMeshTable": {
-      "type": "object",
-      "description": "Dictionary of polygon mesh geometry definition data keyed by internal mesh ID.",
-      "additionalProperties": {
-        "$ref": "#/definitions/PolygonMesh"
-      }
+      "description": "Collection of polygon mesh geometry definition data keyed by internal mesh ID or stored as a table array.",
+      "oneOf": [
+        {
+          "type": "array",
+          "description": "List of polygon mesh definitions.",
+          "items": {
+            "$ref": "#/definitions/PolygonMeshItem"
+          }
+        },
+        {
+          "type": "object",
+          "description": "Dictionary of polygon mesh geometry definition data keyed by internal mesh ID.",
+          "additionalProperties": {
+            "$ref": "#/definitions/PolygonMesh"
+          }
+        }
+      ]
     }
   },
   "definitions": {
     "Vector3": {
       "type": "object",
-      "description": "3D Cartesian coordinate or dimension in meters.",
+      "description": "3D Cartesian coordinate, vector, or dimension in meters or degrees.",
       "required": ["x", "y", "z"],
       "properties": {
-        "x": { "type": "number", "description": "X component in meters" },
-        "y": { "type": "number", "description": "Y component in meters (up axis)" },
-        "z": { "type": "number", "description": "Z component in meters (front axis)" }
+        "x": { "type": "number", "description": "X component in meters or degrees" },
+        "y": { "type": "number", "description": "Y component in meters or degrees (up axis)" },
+        "z": { "type": "number", "description": "Z component in meters or degrees (front axis)" }
       }
     },
     "Quaternion": {
@@ -96,6 +123,15 @@
         "g": { "type": "number", "minimum": 0, "maximum": 1 },
         "b": { "type": "number", "minimum": 0, "maximum": 1 },
         "a": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "BoundingBox3D": {
+      "type": "object",
+      "description": "3D Axis-Aligned Bounding Box (AABB) in world space coordinates (meters).",
+      "required": ["min", "max"],
+      "properties": {
+        "min": { "$ref": "#/definitions/Vector3" },
+        "max": { "$ref": "#/definitions/Vector3" }
       }
     },
     "Camera": {
@@ -132,6 +168,45 @@
         "standardId": { "type": "string", "description": "Standard material unique id (e.g. 'lumber.spf.2x2.6f')." },
         "name": { "type": "string", "description": "Standard material display name." },
         "snapshotAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "SourceMaterial": {
+      "type": "object",
+      "description": "Origin stock material specifications preserved before boolean operations.",
+      "properties": {
+        "type": { "type": "string", "description": "Original part type (e.g. 'board', 'lumber')." },
+        "standardSize": { "$ref": "#/definitions/Vector3" },
+        "color": { "$ref": "#/definitions/ColorRGB" },
+        "commentText": { "type": "string", "description": "Standard material comment or label." },
+        "specificGravity": { "type": "number" },
+        "textureId": { "type": "integer" }
+      }
+    },
+    "DimensionMeasure": {
+      "type": "object",
+      "description": "Exact coordinate measurement details for dimension entity.",
+      "required": ["start", "end", "valueMm"],
+      "properties": {
+        "start": {
+          "$ref": "#/definitions/Vector3",
+          "description": "Measurement starting coordinate point in world space."
+        },
+        "end": {
+          "$ref": "#/definitions/Vector3",
+          "description": "Measurement ending coordinate point in world space."
+        },
+        "side": {
+          "$ref": "#/definitions/Vector3",
+          "description": "Direction normal vector of extension lines."
+        },
+        "offset": {
+          "type": "number",
+          "description": "Offset distance along side vector in meters."
+        },
+        "valueMm": {
+          "type": "number",
+          "description": "Calculated measurement value in millimeters."
+        }
       }
     },
     "CutLayoutItem": {
@@ -185,6 +260,27 @@
         }
       }
     },
+    "PolygonMeshItem": {
+      "type": "object",
+      "description": "Polygon mesh table item containing mesh geometry definition with its identifier.",
+      "required": ["meshId", "vertices", "faces"],
+      "properties": {
+        "meshId": {
+          "type": "string",
+          "description": "Unique mesh signature key (e.g. 'ModelName|Dimensions|Path.dmesh')."
+        },
+        "vertices": {
+          "type": "array",
+          "description": "Flat array of vertex coordinate components [x0, y0, z0, x1, y1, z1, ...].",
+          "items": { "type": "number" }
+        },
+        "faces": {
+          "type": "array",
+          "description": "Flat array of triangle vertex index triplets [i0, j0, k0, i1, j1, k1, ...].",
+          "items": { "type": "integer" }
+        }
+      }
+    },
     "PolygonMesh": {
       "type": "object",
       "description": "3D polygon geometry data (vertices and faces).",
@@ -201,7 +297,7 @@
     },
     "SceneObject": {
       "type": "object",
-      "description": "Generic 3D scene entity (lumber, board, cylinder, annotation, dimension, etc.).",
+      "description": "Generic 3D scene entity (lumber, board, cylinder, fasteners, images, annotations, dimensions, etc.).",
       "required": [
         "id",
         "name",
@@ -268,8 +364,24 @@
             "protractor",
             "waveBoard",
             "tube",
-            "polygon"
+            "polygon",
+            "picture",
+            "boolean",
+            "screw",
+            "steelProfile"
           ]
+        },
+        "rotationDeg": {
+          "$ref": "#/definitions/Vector3",
+          "description": "Euler rotation angles in degrees [x, y, z]."
+        },
+        "worldBounds": {
+          "$ref": "#/definitions/BoundingBox3D",
+          "description": "World space axis-aligned bounding box (min/max)."
+        },
+        "noAggregated": {
+          "type": "boolean",
+          "description": "Whether this part is excluded from cut plan and BOM parts list aggregation."
         },
         "cutAngles": {
           "type": "array",
@@ -332,6 +444,10 @@
           "type": "boolean",
           "description": "Whether annotation continuously faces the active camera."
         },
+        "measure": {
+          "$ref": "#/definitions/DimensionMeasure",
+          "description": "Exact coordinate measurement details for dimension entity."
+        },
         "text": {
           "type": "string",
           "description": "Text string content for textBoard and comment."
@@ -348,7 +464,7 @@
         "frameVisible": { "type": "boolean" },
         "contentRotation": {
           "type": "number",
-          "description": "Rotation of content text in degrees (0, 90, 180, 270)."
+          "description": "Rotation of content text or image in degrees (0, 90, 180, 270)."
         },
         "arrowPoint": {
           "$ref": "#/definitions/Vector3",
@@ -360,7 +476,7 @@
         },
         "thickness": {
           "type": "number",
-          "description": "Thickness in meters for waveBoard / tube."
+          "description": "Thickness in meters for waveBoard, tube, or steelProfile."
         },
         "subType": {
           "type": "string",
@@ -377,6 +493,126 @@
         "weightG": {
           "type": "number",
           "description": "Part weight in grams."
+        },
+        "snapVertices": {
+          "type": "array",
+          "description": "Array of local snap point vertex coordinates.",
+          "items": {
+            "$ref": "#/definitions/Vector3"
+          }
+        },
+        "vertices": {
+          "description": "Geometry vertex buffer (flat array of numbers, array of Vector3, or raw string data).",
+          "oneOf": [
+            {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  { "type": "number" },
+                  { "$ref": "#/definitions/Vector3" }
+                ]
+              }
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "faces": {
+          "description": "Geometry face topology buffer (indices or polygon face structures, or raw string data).",
+          "oneOf": [
+            {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  { "type": "integer" },
+                  { "type": "object" }
+                ]
+              }
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "sourceMaterials": {
+          "type": "array",
+          "description": "Origin stock material specifications preserved before boolean operations.",
+          "items": {
+            "$ref": "#/definitions/SourceMaterial"
+          }
+        },
+        "imageBase64": {
+          "type": "string",
+          "description": "Base64-encoded image data string for picture entity."
+        },
+        "imageMimeType": {
+          "type": "string",
+          "description": "Image MIME content type (e.g. 'image/jpeg', 'image/png', 'image/webp')."
+        },
+        "aspectRatioFixed": {
+          "type": "boolean",
+          "description": "Whether image aspect ratio is locked during scaling."
+        },
+        "aspectRatio": {
+          "type": "number",
+          "description": "Image width / height aspect ratio."
+        },
+        "dispPattern": {
+          "type": "integer",
+          "description": "Display pattern flag (e.g. 0: double-sided, 1: front-only)."
+        },
+        "diameterIndex": {
+          "type": "integer",
+          "description": "Screw nominal diameter preset index (e.g. 6 for 3.8mm, 8 for 4.2mm)."
+        },
+        "screwLength": {
+          "type": "number",
+          "description": "Screw shaft length in meters (e.g. 0.04 for 40mm)."
+        },
+        "layout": {
+          "type": "string",
+          "description": "Screw placement layout configuration pattern (e.g. 'layout1', 'layout2', 'layout3A', 'layout4')."
+        },
+        "orientation": {
+          "type": "string",
+          "description": "Fastener orientation direction ('horizontal', 'vertical')."
+        },
+        "screwType": {
+          "type": "string",
+          "description": "Fastener category type (e.g. 'screw', 'bolt')."
+        },
+        "showDimension": {
+          "type": "boolean",
+          "description": "Whether to display fastener dimension indicator."
+        },
+        "screwColor": {
+          "type": "string",
+          "description": "Hex color code for screw head/body (e.g. '#c0c0c0')."
+        },
+        "lineColor": {
+          "type": "string",
+          "description": "Hex color code for auxiliary guide lines (e.g. '#000000')."
+        },
+        "linePattern1": {
+          "type": "integer",
+          "description": "Line pattern style for axis center line."
+        },
+        "linePattern2": {
+          "type": "integer",
+          "description": "Line pattern style for auxiliary extension line."
+        },
+        "screwPosition": {
+          "type": "number",
+          "description": "Position offset index or ratio along fastener guide line."
+        },
+        "shape": {
+          "type": "string",
+          "description": "Profile section shape (e.g. 'flatBar', 'angle', 'squarePipe', 'roundPipe')."
+        },
+        "material": {
+          "type": "string",
+          "description": "Raw material material (e.g. 'steel', 'alumi', 'stainless')."
         }
       }
     }
