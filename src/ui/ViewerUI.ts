@@ -1,5 +1,5 @@
 import { Viewer } from '../core/Viewer';
-import { Cadiy4Parser } from '../loader/Cadiy4Parser';
+import { ModelLoader } from '../loader/ModelLoader';
 import { CadiyObject, Cadiy4Data } from '../types/cadiy4';
 import { ViewModeManager, ViewMode } from '../core/ViewModeManager';
 import { LayerManager } from '../core/LayerManager';
@@ -8,7 +8,7 @@ import { CutListCalculator } from '../core/CutListCalculator';
 
 export class ViewerUI {
   private viewer: Viewer;
-  private parser: Cadiy4Parser;
+  private modelLoader: ModelLoader;
   private viewModeManager: ViewModeManager;
   private layerManager: LayerManager;
   private cutListCalculator: CutListCalculator;
@@ -36,7 +36,7 @@ export class ViewerUI {
 
   constructor(viewer: Viewer) {
     this.viewer = viewer;
-    this.parser = new Cadiy4Parser();
+    this.modelLoader = new ModelLoader();
     this.viewModeManager = new ViewModeManager();
     this.layerManager = new LayerManager();
     this.cutListCalculator = new CutListCalculator();
@@ -276,8 +276,8 @@ export class ViewerUI {
     this.showLoading(true);
     try {
       const text = await file.text();
-      const data = this.parser.parse(text);
       const fileName = file.name.replace(/\.[^/.]+$/, '');
+      const data = this.modelLoader.load(text, fileName);
       this.onModelLoaded(data, fileName);
     } catch (err: any) {
       alert(`モデルの読み込みに失敗しました: ${err.message}`);
@@ -297,11 +297,12 @@ export class ViewerUI {
         throw new Error(`HTTP ${response.status} ${response.statusText}`);
       }
       const text = await response.text();
-      const data = this.parser.parse(text);
 
       const urlParts = url.split('/');
       const lastPart = urlParts[urlParts.length - 1] || 'model';
       const fileName = lastPart.replace(/\.[^/.]+$/, '');
+
+      const data = this.modelLoader.load(text, fileName);
 
       this.onModelLoaded(data, fileName);
     } catch (err: any) {

@@ -1,0 +1,375 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "caDIY3D Legacy (.cadiy) XML Schema Definition",
+  "description": "caDIY3D 旧バージョン (Version 7.0) の XML データモデルおよびパース後の中間オブジェクトスキーマ",
+  "type": "object",
+  "required": ["_2xModel"],
+  "properties": {
+    "_2xModel": {
+      "type": "object",
+      "required": ["Version", "Camera", "_2xObject"],
+      "properties": {
+        "Version": {
+          "type": "string",
+          "description": "プロジェクト内部バージョン。通常 '7.0'"
+        },
+        "Thumbnail": {
+          "type": "string",
+          "description": "Base64エンコードされたサムネイルバイナリ"
+        },
+        "Camera": {
+          "type": "object",
+          "required": ["Position", "Center"],
+          "properties": {
+            "Position": { "type": "string", "pattern": "^-?[0-9.]+,-?[0-9.]+,-?[0-9.]+$" },
+            "Center": { "type": "string", "pattern": "^-?[0-9.]+,-?[0-9.]+,-?[0-9.]+$" },
+            "viewMode": { "type": "string" },
+            "fov": { "type": "string" },
+            "dist": { "type": "string" },
+            "nearZ": { "type": "string" },
+            "farZ": { "type": "string" },
+            "phai": { "type": "string" },
+            "theta": { "type": "string" },
+            "ViewingMode": { "type": "string" },
+            "RealPrintFrameMode": { "type": "string" },
+            "SceneDrawMode": { "type": "string" },
+            "ScenePartsNameMode": { "type": "string" },
+            "LayerColorMode": { "type": "string" }
+          }
+        },
+        "_2xLayer": {
+          "type": "object",
+          "properties": {
+            "_2xLayerInfoItem": {
+              "oneOf": [
+                { "$ref": "#/definitions/LayerInfoItem" },
+                {
+                  "type": "array",
+                  "items": { "$ref": "#/definitions/LayerInfoItem" }
+                }
+              ]
+            }
+          }
+        },
+        "_2xPaint": { "type": "string" },
+        "_2xBooleanMeshInfo": {
+          "type": "object",
+          "properties": {
+            "_2xBooleanMeshInfo": {
+              "oneOf": [
+                { "$ref": "#/definitions/BooleanMeshInfo" },
+                {
+                  "type": "array",
+                  "items": { "$ref": "#/definitions/BooleanMeshInfo" }
+                }
+              ]
+            }
+          }
+        },
+        "_2xPictureImageInfos": {
+          "type": "object",
+          "properties": {
+            "_2xPictureImageInfo": {
+              "oneOf": [
+                { "$ref": "#/definitions/PictureImageInfo" },
+                {
+                  "type": "array",
+                  "items": { "$ref": "#/definitions/PictureImageInfo" }
+                }
+              ]
+            }
+          }
+        },
+        "_2xObject": {
+          "type": "object",
+          "properties": {
+            "_2xBoard": {
+              "oneOf": [
+                { "$ref": "#/definitions/LegacyBoard" },
+                { "type": "array", "items": { "$ref": "#/definitions/LegacyBoard" } }
+              ]
+            },
+            "_2xCylinder": {
+              "oneOf": [
+                { "$ref": "#/definitions/LegacyCylinder" },
+                { "type": "array", "items": { "$ref": "#/definitions/LegacyCylinder" } }
+              ]
+            },
+            "_2xPolygon": {
+              "oneOf": [
+                { "$ref": "#/definitions/LegacyPolygon" },
+                { "type": "array", "items": { "$ref": "#/definitions/LegacyPolygon" } }
+              ]
+            },
+            "_2xBoolean": {
+              "oneOf": [
+                { "$ref": "#/definitions/LegacyBoolean" },
+                { "type": "array", "items": { "$ref": "#/definitions/LegacyBoolean" } }
+              ]
+            },
+            "_2xScrew": {
+              "oneOf": [
+                { "$ref": "#/definitions/LegacyScrew" },
+                { "type": "array", "items": { "$ref": "#/definitions/LegacyScrew" } }
+              ]
+            },
+            "_2xDiyMaterial": {
+              "oneOf": [
+                { "$ref": "#/definitions/LegacyDiyMaterial" },
+                { "type": "array", "items": { "$ref": "#/definitions/LegacyDiyMaterial" } }
+              ]
+            },
+            "_2xPicture": {
+              "oneOf": [
+                { "$ref": "#/definitions/LegacyPicture" },
+                { "type": "array", "items": { "$ref": "#/definitions/LegacyPicture" } }
+              ]
+            },
+            "_2xDimension": {
+              "oneOf": [
+                { "$ref": "#/definitions/LegacyDimension" },
+                { "type": "array", "items": { "$ref": "#/definitions/LegacyDimension" } }
+              ]
+            }
+          }
+        },
+        "CutList": {
+          "type": "object",
+          "properties": {
+            "CutListPartsSeparator": {
+              "oneOf": [
+                { "$ref": "#/definitions/CutListPartsSeparator" },
+                { "type": "array", "items": { "$ref": "#/definitions/CutListPartsSeparator" } }
+              ]
+            },
+            "CutListPartsBase": {
+              "oneOf": [
+                { "$ref": "#/definitions/CutListPartsBase" },
+                { "type": "array", "items": { "$ref": "#/definitions/CutListPartsBase" } }
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "LayerInfoItem": {
+      "type": "object",
+      "required": ["LayerID", "LayerName"],
+      "properties": {
+        "LayerID": { "type": "string" },
+        "LayerName": { "type": "string" },
+        "LayerVisible": { "type": "string", "enum": ["true", "false"] },
+        "LayerLocked": { "type": "string", "enum": ["true", "false"] },
+        "LayerColor": { "type": "string" },
+        "LayerColorMode": { "type": "string" }
+      }
+    },
+    "BooleanMeshInfo": {
+      "type": "object",
+      "required": ["BooleanMeshInfoID", "MeshVertex"],
+      "properties": {
+        "BooleanMeshInfoID": { "type": "string" },
+        "MeshVertex": { "type": "string", "description": "頂点リスト x,y,z/x,y,z/..." },
+        "MeshFaceInfo": {
+          "oneOf": [
+            { "type": "object", "properties": { "FInfo": { "type": "string" } } },
+            { "type": "array", "items": { "type": "object", "properties": { "FInfo": { "type": "string" } } } }
+          ]
+        }
+      }
+    },
+    "PictureImageInfo": {
+      "type": "object",
+      "required": ["ImageBase64ID", "ImageBase64"],
+      "properties": {
+        "ImageBase64ID": { "type": "string" },
+        "ImageBase64": { "type": "string" }
+      }
+    },
+    "CommonLegacyObject": {
+      "type": "object",
+      "required": ["UniqueID", "Location", "Quaternion", "Size"],
+      "properties": {
+        "UniqueID": { "type": "string" },
+        "CommentText": { "type": "string" },
+        "SubPartsName": { "type": "string" },
+        "LinkedCutPartsText": { "type": "string" },
+        "Location": { "type": "string" },
+        "Quaternion": { "type": "string" },
+        "Size": { "type": "string" },
+        "StandardSize": { "type": "string" },
+        "Diffuse": { "type": "string" },
+        "Specular": { "type": "string" },
+        "PaintID": { "type": "string" },
+        "UnitPrice": { "type": "string" },
+        "SpecificGravity": { "type": "string" },
+        "Remarks": { "type": "string" },
+        "GroupID": { "type": "string" },
+        "Layer": { "type": "string" },
+        "Hide": { "type": "string", "enum": ["true", "false"] },
+        "Texture": { "type": "string" },
+        "ObjectTextureID": { "type": "string" },
+        "PlywoodTextureID": { "type": "string" },
+        "NoAggregated": { "type": "string", "enum": ["true", "false"] },
+        "Dummy": { "type": "string" },
+        "Style": { "type": "string" }
+      }
+    },
+    "LegacyBoard": {
+      "allOf": [
+        { "$ref": "#/definitions/CommonLegacyObject" },
+        {
+          "type": "object",
+          "properties": {
+            "CutValue": { "type": "string" },
+            "RoundValue": { "type": "string" },
+            "RoundModes": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "LegacyCylinder": {
+      "allOf": [
+        { "$ref": "#/definitions/CommonLegacyObject" },
+        {
+          "type": "object",
+          "properties": {
+            "CutValue": { "type": "string" },
+            "RoundValue": { "type": "string" },
+            "RoundModes": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "LegacyDimension": {
+      "allOf": [
+        { "$ref": "#/definitions/CommonLegacyObject" },
+        {
+          "type": "object",
+          "properties": {
+            "LinePattern1": { "type": "string" },
+            "LinePattern2": { "type": "string" },
+            "LineWidth": { "type": "string" },
+            "LineEndType": { "type": "string" },
+            "TextVisibled": { "type": "string" },
+            "PosDimensionValue": { "type": "string" },
+            "DimensionSymbol": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "LegacyScrew": {
+      "allOf": [
+        { "$ref": "#/definitions/CommonLegacyObject" },
+        {
+          "type": "object",
+          "properties": {
+            "ScrewLength": { "type": "string" },
+            "ScrewDiameter": { "type": "string" },
+            "ScrewLayout": { "type": "string" },
+            "ScrewType": { "type": "string" },
+            "ScrewColor": { "type": "object" },
+            "LineColor": { "type": "object" },
+            "DispDimension": { "type": "string" },
+            "ScrewPosition": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "LegacyPolygon": {
+      "allOf": [
+        { "$ref": "#/definitions/CommonLegacyObject" },
+        {
+          "type": "object",
+          "properties": {
+            "ModelName": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "LegacyBoolean": {
+      "allOf": [
+        { "$ref": "#/definitions/CommonLegacyObject" },
+        {
+          "type": "object",
+          "properties": {
+            "MeshInfoID": { "type": "string" },
+            "OriginalModelType": { "type": "string" },
+            "FaceInfoList": { "type": "array" }
+          }
+        }
+      ]
+    },
+    "LegacyDiyMaterial": {
+      "allOf": [
+        { "$ref": "#/definitions/CommonLegacyObject" },
+        {
+          "type": "object",
+          "properties": {
+            "DiyMaterialType": { "type": "string" },
+            "Thickness": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "LegacyPicture": {
+      "allOf": [
+        { "$ref": "#/definitions/CommonLegacyObject" },
+        {
+          "type": "object",
+          "properties": {
+            "ImageBase64ID": { "type": "string" },
+            "ImagePath": { "type": "string" },
+            "AspectRatioFixed": { "type": "string" },
+            "AspectRatio": { "type": "string" }
+          }
+        }
+      ]
+    },
+    "CutListPartsSeparator": {
+      "type": "object",
+      "properties": {
+        "PartsType": { "type": "string" },
+        "Size": { "type": "string" },
+        "Title": { "type": "string" },
+        "Info": { "type": "string" },
+        "ModleType": { "type": "string" }
+      }
+    },
+    "CutListPartsBase": {
+      "type": "object",
+      "properties": {
+        "PartsType": { "type": "string" },
+        "Size": { "type": "string" },
+        "UnitPrice": { "type": "string" },
+        "ModelType": { "type": "string" },
+        "PartsName": { "type": "string" },
+        "Weight": { "type": "string" },
+        "SpecificGravity": { "type": "string" },
+        "Parts": {
+          "type": "object",
+          "properties": {
+            "CutParts": {
+              "oneOf": [
+                { "$ref": "#/definitions/CutPartItem" },
+                { "type": "array", "items": { "$ref": "#/definitions/CutPartItem" } }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "CutPartItem": {
+      "type": "object",
+      "properties": {
+        "CutID": { "type": "string" },
+        "ArrangeTB": { "type": "string" },
+        "ArrangeLR": { "type": "string" },
+        "PartsText": { "type": "string" },
+        "Location": { "type": "string" }
+      }
+    }
+  }
+}
