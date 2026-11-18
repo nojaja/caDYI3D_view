@@ -1,0 +1,361 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cadiy3d.com/schemas/cadiy4.schema.json",
+  "title": "caDIY3D V4 Project File Format (.cadiy4)",
+  "description": "JSON Schema definition for caDIY3D V4 project file format (.cadiy4).",
+  "type": "object",
+  "required": [
+    "version",
+    "thumbnail",
+    "camera",
+    "objects",
+    "layers"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "description": "File format version number (currently 1).",
+      "default": 1,
+      "enum": [1]
+    },
+    "thumbnail": {
+      "type": "string",
+      "description": "Data URL containing a base64-encoded WebP thumbnail of the scene (e.g. 'data:image/webp;base64,...'). May be empty."
+    },
+    "camera": {
+      "$ref": "#/definitions/Camera"
+    },
+    "objects": {
+      "type": "array",
+      "description": "List of 3D objects, materials, dimensions, and annotations in the scene.",
+      "items": {
+        "$ref": "#/definitions/SceneObject"
+      }
+    },
+    "layers": {
+      "type": "array",
+      "description": "List of layer/folder structures in the scene.",
+      "items": {
+        "$ref": "#/definitions/Layer"
+      }
+    },
+    "snaps": {
+      "type": "array",
+      "description": "Snap point configurations or constraints.",
+      "default": []
+    },
+    "cutList": {
+      "$ref": "#/definitions/CutList"
+    },
+    "polygonMeshTable": {
+      "type": "object",
+      "description": "Dictionary of polygon mesh geometry definition data keyed by internal mesh ID.",
+      "additionalProperties": {
+        "$ref": "#/definitions/PolygonMesh"
+      }
+    }
+  },
+  "definitions": {
+    "Vector3": {
+      "type": "object",
+      "description": "3D Cartesian coordinate or dimension in meters.",
+      "required": ["x", "y", "z"],
+      "properties": {
+        "x": { "type": "number", "description": "X component in meters" },
+        "y": { "type": "number", "description": "Y component in meters (up axis)" },
+        "z": { "type": "number", "description": "Z component in meters (front axis)" }
+      }
+    },
+    "Quaternion": {
+      "type": "object",
+      "description": "Rotation represented as a unit quaternion.",
+      "required": ["x", "y", "z", "w"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" },
+        "w": { "type": "number" }
+      }
+    },
+    "ColorRGB": {
+      "type": "object",
+      "description": "RGB color with normalized floating-point components [0.0, 1.0].",
+      "required": ["r", "g", "b"],
+      "properties": {
+        "r": { "type": "number", "minimum": 0, "maximum": 1 },
+        "g": { "type": "number", "minimum": 0, "maximum": 1 },
+        "b": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "ColorRGBA": {
+      "type": "object",
+      "description": "RGBA color with normalized floating-point components [0.0, 1.0].",
+      "required": ["r", "g", "b", "a"],
+      "properties": {
+        "r": { "type": "number", "minimum": 0, "maximum": 1 },
+        "g": { "type": "number", "minimum": 0, "maximum": 1 },
+        "b": { "type": "number", "minimum": 0, "maximum": 1 },
+        "a": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "Camera": {
+      "type": "object",
+      "description": "3D viewport camera position and target orientation.",
+      "required": ["position", "target"],
+      "properties": {
+        "position": { "$ref": "#/definitions/Vector3" },
+        "target": { "$ref": "#/definitions/Vector3" }
+      }
+    },
+    "Layer": {
+      "type": "object",
+      "description": "Layer (folder) definition for grouping parts.",
+      "required": ["id", "name", "visible", "locked", "color", "parentId"],
+      "properties": {
+        "id": { "type": "integer", "description": "Layer unique identifier (0 is the root layer)." },
+        "name": { "type": "string", "description": "User visible layer display name." },
+        "visible": { "type": "boolean", "default": true },
+        "locked": { "type": "boolean", "default": false },
+        "color": { "$ref": "#/definitions/ColorRGB" },
+        "colorMode": { "type": "boolean", "default": false },
+        "parentId": {
+          "type": ["integer", "null"],
+          "description": "Parent layer ID, or null for root-level layers."
+        }
+      }
+    },
+    "StandardRef": {
+      "type": "object",
+      "description": "Reference to a material preset/standard.",
+      "properties": {
+        "setId": { "type": "string", "description": "Preset standard set identifier (e.g. 'preset.basic')." },
+        "standardId": { "type": "string", "description": "Standard material unique id (e.g. 'lumber.spf.2x2.6f')." },
+        "name": { "type": "string", "description": "Standard material display name." },
+        "snapshotAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "CutList": {
+      "type": "object",
+      "description": "Woodworking cut plan parameters and layout mappings.",
+      "properties": {
+        "cutWidthMm": {
+          "type": "number",
+          "description": "Saw blade kerf width in millimeters (typical default: 3mm).",
+          "default": 3
+        },
+        "packingMode": {
+          "type": "string",
+          "description": "Stock layout packing strategy (e.g. 'adjacent').",
+          "default": "adjacent"
+        },
+        "layouts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "baseId": { "type": "integer" },
+              "partsId": { "type": "string" },
+              "x": { "type": "number" },
+              "z": { "type": "number" }
+            }
+          }
+        }
+      }
+    },
+    "PolygonMesh": {
+      "type": "object",
+      "description": "3D polygon geometry data (vertices and faces).",
+      "properties": {
+        "vertices": {
+          "type": "array",
+          "items": { "type": "number" }
+        },
+        "faces": {
+          "type": "array",
+          "items": { "type": "integer" }
+        }
+      }
+    },
+    "SceneObject": {
+      "type": "object",
+      "description": "Generic 3D scene entity (lumber, board, cylinder, annotation, dimension, etc.).",
+      "required": [
+        "id",
+        "name",
+        "position",
+        "quaternion",
+        "size",
+        "visible",
+        "locked",
+        "layerId",
+        "color",
+        "displayId",
+        "type"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Internal unique identifier (UUID v4 format or 'legacy-XXX')."
+        },
+        "name": {
+          "type": "string",
+          "description": "Material or object standard name."
+        },
+        "partName": {
+          "type": "string",
+          "description": "Optional individual label of the part (e.g. 'Table Top', 'Left Leg')."
+        },
+        "position": {
+          "$ref": "#/definitions/Vector3",
+          "description": "Bounding box center coordinates in world space (meters)."
+        },
+        "quaternion": {
+          "$ref": "#/definitions/Quaternion",
+          "description": "Orientation quaternion [x, y, z, w]."
+        },
+        "size": {
+          "$ref": "#/definitions/Vector3",
+          "description": "Local dimensions in meters. Lumber/Cylinder: z is length, x/y is cross section. Board: y is thickness, x is width, z is length."
+        },
+        "visible": { "type": "boolean", "default": true },
+        "locked": { "type": "boolean", "default": false },
+        "groupId": { "type": "integer", "default": 0 },
+        "layerId": { "type": "integer", "description": "ID of the containing layer." },
+        "color": { "$ref": "#/definitions/ColorRGB" },
+        "textureId": {
+          "type": "integer",
+          "description": "Texture index (0: flat color, 1: wood grain lumber, 2: wood grain board, etc.).",
+          "default": 0
+        },
+        "displayId": {
+          "type": "integer",
+          "description": "User visible sequential part number shown on screen."
+        },
+        "type": {
+          "type": "string",
+          "description": "Entity category type.",
+          "enum": [
+            "lumber",
+            "board",
+            "cylinder",
+            "roundBoard",
+            "dimension",
+            "textBoard",
+            "comment",
+            "protractor",
+            "waveBoard",
+            "tube",
+            "polygon"
+          ]
+        },
+        "cutAngles": {
+          "type": "array",
+          "description": "8 cut angle values in degrees [0..7] for miters/bevels on ends.",
+          "items": { "type": "number" },
+          "minItems": 8,
+          "maxItems": 8
+        },
+        "standardRef": {
+          "$ref": "#/definitions/StandardRef"
+        },
+        "unitPrice": {
+          "type": "number",
+          "description": "Unit purchase price in currency (JPY)."
+        },
+        "specificGravity": {
+          "type": "number",
+          "description": "Material density / specific gravity (e.g. 0.4 for SPF lumber)."
+        },
+        "remarks": {
+          "type": "string",
+          "description": "User or standard remarks/notes."
+        },
+        "legacyStandardSize": {
+          "$ref": "#/definitions/Vector3"
+        },
+        "linePattern": {
+          "type": "integer",
+          "description": "Line pattern style (0: solid)."
+        },
+        "auxLinePattern": {
+          "type": "integer",
+          "description": "Auxiliary extension line pattern style (0: solid)."
+        },
+        "lineWidth": {
+          "type": "number",
+          "description": "Line width in pixels (e.g. 1.5)."
+        },
+        "arrowType": {
+          "type": "string",
+          "description": "Arrowhead type ('inside', 'outside', etc.)."
+        },
+        "textVisible": {
+          "type": "boolean",
+          "description": "Whether the text label is shown."
+        },
+        "valuePosition": {
+          "type": "string",
+          "description": "Positioning of dimension measurement text ('top', etc.)."
+        },
+        "symbol": {
+          "type": "string",
+          "description": "Dimension prefix symbol (e.g. 'φ', 'R')."
+        },
+        "fontSize": {
+          "type": "number",
+          "description": "Text display font size (points/pixels)."
+        },
+        "billboard": {
+          "type": "boolean",
+          "description": "Whether annotation continuously faces the active camera."
+        },
+        "text": {
+          "type": "string",
+          "description": "Text string content for textBoard and comment."
+        },
+        "fontFamily": {
+          "type": "string",
+          "description": "Font family name (e.g. 'Meiryo UI', 'Meiryo')."
+        },
+        "bold": { "type": "boolean" },
+        "italic": { "type": "boolean" },
+        "backgroundColor": {
+          "$ref": "#/definitions/ColorRGBA"
+        },
+        "frameVisible": { "type": "boolean" },
+        "contentRotation": {
+          "type": "number",
+          "description": "Rotation of content text in degrees (0, 90, 180, 270)."
+        },
+        "arrowPoint": {
+          "$ref": "#/definitions/Vector3",
+          "description": "Target point that the comment arrow points to in world coordinates."
+        },
+        "angle": {
+          "type": "number",
+          "description": "Measured angle in degrees for protractor (0..180)."
+        },
+        "thickness": {
+          "type": "number",
+          "description": "Thickness in meters for waveBoard / tube."
+        },
+        "subType": {
+          "type": "string",
+          "description": "Sub-type classification (e.g. 'sineSmall' for waveBoard, 'pvc' for tube)."
+        },
+        "modelName": {
+          "type": "string",
+          "description": "Relative file path of imported 3D mesh (e.g. 'Doll Model/Adult 170cm.dmesh')."
+        },
+        "meshRef": {
+          "type": "string",
+          "description": "Reference key to mesh entry in polygonMeshTable."
+        },
+        "weightG": {
+          "type": "number",
+          "description": "Part weight in grams."
+        }
+      }
+    }
+  }
+}

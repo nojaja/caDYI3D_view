@@ -1,0 +1,21 @@
+/// <reference types="vitest" />
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  base: './',
+  build: {
+    target: 'esnext',
+    outDir: 'dist',
+    assetsDir: 'assets',
+    sourcemap: true,
+  },
+  server: {
+    port: 3000,
+    open: false,
+  },
+  test: {
+    environment: 'node',
+    globals: true,
+    include: ['tests/unit/**/*.test.ts'],
+  },
+});
