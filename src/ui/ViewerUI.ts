@@ -171,6 +171,7 @@ export class ViewerUI {
     });
 
     // 7. 材料取り図内のパーツクリック/タップで選択状態にし、何もない箇所をクリック/長押しタップで解除する
+    this.cutlistViewContainer.addEventListener('contextmenu', (e) => e.preventDefault());
     this.cutlistViewContainer.addEventListener('click', (e) => {
       if (this.isCutlistTouchDragging) return;
       const target = (e.target as HTMLElement).closest('[data-object-id]');
@@ -240,6 +241,10 @@ export class ViewerUI {
 
   private completeCutlistLongPress(clientX: number, clientY: number): void {
     this.cancelCutlistLongPress();
+    // iOS Safariでの長押し選択をクリア
+    if (typeof window !== 'undefined' && window.getSelection) {
+      window.getSelection()?.removeAllRanges();
+    }
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
       try { navigator.vibrate(40); } catch (_) {}
     }

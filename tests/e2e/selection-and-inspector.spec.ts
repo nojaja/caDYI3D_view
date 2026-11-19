@@ -188,6 +188,14 @@ test.describe('オブジェクト選択状態・ハイライト・長押しエ�
     // 長押し成立によりオブジェクトが選択され、inspector-card が表示されること
     await expect(inspectorCard).toHaveClass(/active/);
     await expect(page.locator('#inspector-title')).toHaveText('天板 (上段)');
+
+    // 長押し時に全選択や選択範囲が発生していないこと（iPhone長押し全選択対策）
+    const selectionText = await page.evaluate(() => window.getSelection()?.toString() || '');
+    expect(selectionText).toBe('');
+
+    // canvas に touch-action: none, user-select: none が適用されていること
+    const touchAction = await canvas.evaluate((el) => window.getComputedStyle(el).touchAction);
+    expect(touchAction).toBe('none');
   });
 
   test('4. inspector-cardの表示要件（名称行削除、スマホで高さ半分・価格/位置/傾き非表示、モード切替時の一時非表示）の検証', async ({ page }, testInfo) => {

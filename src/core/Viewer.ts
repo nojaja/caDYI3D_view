@@ -488,6 +488,8 @@ export class Viewer {
 
     const canvas = this.renderer.domElement;
     canvas.addEventListener('click', this.onCanvasClick.bind(this));
+    // 長押し時のiOS Safari/ブラウザ標準コンテキストメニュー抑止
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
     // スマホ表示向けの長押しタップ判定
     canvas.addEventListener('touchstart', this.onCanvasTouchStart.bind(this), { passive: true });
@@ -580,6 +582,10 @@ export class Viewer {
   private completeLongPress(): void {
     const target = this.longPressTarget;
     this.cancelLongPress();
+    // iOS Safariでの長押し選択をクリア
+    if (typeof window !== 'undefined' && window.getSelection) {
+      window.getSelection()?.removeAllRanges();
+    }
     this.showLongPressCompleted(this.touchStartX, this.touchStartY);
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
       try { navigator.vibrate(40); } catch (_) {}
