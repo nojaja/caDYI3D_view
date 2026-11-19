@@ -637,6 +637,12 @@ html, body {
   user-select: none;
 }
 
+.cutplan-part-size,
+.cutplan-part-label .cutplan-part-size,
+.cutplan-svg-canvas .cutplan-part-size {
+  dominant-baseline: central;
+}
+
 .cutplan-remaining-block {
   height: 100%;
   background: repeating-linear-gradient(
@@ -882,6 +888,11 @@ html, body {
   }
 
   /* 材料取り図: スマホ表示スタイル */
+  .cutlist-sheets-container {
+    padding-bottom: 50vh;
+    padding-bottom: 50dvh;
+  }
+
   .cutplan-part-name,
   .cutplan-part-label .cutplan-part-name,
   .cutplan-svg-canvas .cutplan-part-name {

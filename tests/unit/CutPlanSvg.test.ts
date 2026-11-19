@@ -91,9 +91,9 @@ describe('ViewerUI - 材料取り図(木取り図) SVG描画ロジック', () =>
     expect(sheet9).toBeDefined();
     const svg9 = ViewerUI.render2DSheetSvg(sheet9);
 
-    // 斜めカット01: 斜め木取り線 (実線、赤い指示線、有効桁数: 小数点第2位)
-    expect(svg9).toContain('✂ 斜めカット: 809.00 × 171.96');
-    expect(svg9).not.toContain('✂ 斜めカット: 809.00 × 171.96mm');
+    // 斜めカット01: 斜め木取り線 (実線、赤い指示線、有効桁数: 小数点第2位、不要な小数点・ゼロは非表示)
+    expect(svg9).toContain('✂ 斜めカット: 809 × 171.96');
+    expect(svg9).not.toContain('✂ 斜めカット: 809 × 171.96mm');
     // 斜めカットが斜め線と同じ角度で回転(transform="rotate(...)")して描画されていること
     expect(svg9).toContain('class="cutplan-diag-cut-label"');
     expect(svg9).toMatch(/transform="rotate\([\d.-]+,\s*[\d.-]+,\s*[\d.-]+\)"/);
@@ -160,7 +160,7 @@ describe('ViewerUI - 材料取り図(木取り図) SVG描画ロジック', () =>
     expect(svg).not.toContain('rx="4"');
   });
 
-  it('getPartLabelInfo でパーツラベルとサイズの取得処理が共通化され、サイズのみ表記(単位mmなし、「寸法:」プレフィックスなし)となり、有効桁数は小数点第2位までとなること', () => {
+  it('getPartLabelInfo でパーツラベルとサイズの取得処理が共通化され、サイズのみ表記(単位mmなし、「寸法:」プレフィックスなし)となり、有効桁数は小数点第2位まで、不要なゼロ・小数点は非表示となること', () => {
     const dummyItem: any = {
       object: { name: 'テスト部材', partName: '側板' },
       widthMm: 120,
@@ -170,14 +170,14 @@ describe('ViewerUI - 材料取り図(木取り図) SVG描画ロジック', () =>
     // 1D用
     const label1D = ViewerUI.getPartLabelInfo(dummyItem, false);
     expect(label1D.partName).toBe('側板');
-    expect(label1D.sizeText).toBe('900.00');
+    expect(label1D.sizeText).toBe('900');
     expect(label1D.sizeText).not.toContain('mm');
     expect(label1D.sizeText).not.toContain('寸法:');
 
     // 2D用
     const label2D = ViewerUI.getPartLabelInfo(dummyItem, true);
     expect(label2D.partName).toBe('側板');
-    expect(label2D.sizeText).toBe('120.00 × 900.00');
+    expect(label2D.sizeText).toBe('120 × 900');
     expect(label2D.sizeText).not.toContain('mm');
     expect(label2D.sizeText).not.toContain('寸法:');
 
@@ -185,13 +185,69 @@ describe('ViewerUI - 材料取り図(木取り図) SVG描画ロジック', () =>
     const fractionalItem: any = {
       object: { name: '斜め部材', partName: '筋交い' },
       widthMm: 89.126,
-      lengthMm: 1720.904,
+      lengthMm: 1720.9,
     };
     const labelFractional1D = ViewerUI.getPartLabelInfo(fractionalItem, false);
-    expect(labelFractional1D.sizeText).toBe('1720.90');
+    expect(labelFractional1D.sizeText).toBe('1720.9');
 
     const labelFractional2D = ViewerUI.getPartLabelInfo(fractionalItem, true);
-    expect(labelFractional2D.sizeText).toBe('89.13 × 1720.90');
+    expect(labelFractional2D.sizeText).toBe('89.13 × 1720.9');
+  });
+
+  it('cutplan-part-size の表示位置が対象 cutplan-svg-part の上下中央(centerY)に配置され、dominant-baseline="central" が指定されていること', () => {
+    // 2Dシートでの検証
+    const dummySheet2D: any = {
+      baseId: 0,
+      layout: '2d',
+      cutWidthMm: 3,
+      sheetLengthMm: 1820,
+      sheetWidthMm: 910,
+      usedLengthMm: 1000,
+      remainingLengthMm: 820,
+      yieldRatePercent: 50,
+      items: [
+        {
+          object: { name: '側板', partName: '側板A' },
+          lengthMm: 1000, // pw (Z方向)
+          widthMm: 400,   // ph (X方向)
+          positionMm: { x: 50, z: 100 }, // px=100 (z), py=50 (x)
+        },
+      ],
+    };
+
+    const svg2D = ViewerUI.render2DSheetSvg(dummySheet2D);
+    // 対象パーツの py=50, ph=400 -> 上下中央は 50 + 400 / 2 = 250
+    expect(svg2D).toContain('data-center-y="250"');
+    expect(svg2D).toContain('class="cutplan-part-size"');
+    expect(svg2D).toContain('y="250"');
+    expect(svg2D).toContain('dominant-baseline="central"');
+
+    // 1Dシートでの検証
+    const dummySheet1D: any = {
+      baseId: 1,
+      layout: '1d',
+      cutWidthMm: 3,
+      sheetLengthMm: 1820,
+      sheetWidthMm: 89,
+      usedLengthMm: 900,
+      remainingLengthMm: 917,
+      yieldRatePercent: 50,
+      items: [
+        {
+          object: { name: '支柱', partName: '支柱A' },
+          lengthMm: 900,
+          widthMm: 89,
+          positionMm: { x: 0, z: 0 },
+        },
+      ],
+    };
+
+    const svg1D = (ViewerUI as any).render1DSheetSvg(dummySheet1D);
+    // boardHeight = 120 -> 上下中央は 60
+    expect(svg1D).toContain('data-center-y="60"');
+    expect(svg1D).toContain('class="cutplan-part-size"');
+    expect(svg1D).toContain('y="60"');
+    expect(svg1D).toContain('dominant-baseline="central"');
   });
 
   it('2D合板シートのSVGで cutplan-part-size に「寸法:」および「mm」が含まれず、サイズ数値のみ表記されること', () => {

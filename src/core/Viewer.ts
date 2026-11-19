@@ -29,6 +29,9 @@ export class Viewer {
     this.container = options.container;
     this.onObjectSelected = options.onObjectSelected;
 
+    // RaycasterのLine判定の閾値をCADスケール（5mm）に設定（デフォルトの1mだと無関係な線が誤ヒットするため）
+    this.raycaster.params.Line = { threshold: 0.005 };
+
     // 1. シーン初期化
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0xf4f6f8);
@@ -341,10 +344,9 @@ export class Viewer {
     this.raycaster.setFromCamera(this.mouse, this.camera);
     const intersects = this.raycaster.intersectObjects(this.currentModelGroup.children, true);
 
-    if (intersects.length > 0) {
-      // 一番手前の交差オブジェクトから userData を探す
-      let curr: THREE.Object3D | null = intersects[0].object;
-      while (curr && !curr.userData?.cadiyObject) {
+    for (const hit of intersects) {
+      let curr: THREE.Object3D | null = hit.object;
+      while (curr && !curr.userData?.cadiyObject && curr !== this.currentModelGroup) {
         curr = curr.parent;
       }
       if (curr && curr.userData?.cadiyObject) {

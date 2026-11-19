@@ -34,6 +34,8 @@ export class ViewerUI {
   private modeBtnCutList: HTMLElement;
   private modeBtnThreeView: HTMLElement;
 
+  private isSelectingFrom3D = false;
+
   constructor(viewer: Viewer) {
     this.viewer = viewer;
     this.modelLoader = new ModelLoader();
@@ -274,22 +276,25 @@ export class ViewerUI {
         el.setAttribute('font-size', svgFs.toFixed(1));
       });
 
-      // 部材名と寸法のYオフセットをフォントサイズに合わせて調整
+      // 部材名と寸法のYオフセットをフォントサイズに合わせて調整（サイズは対象パーツの上下中央に配置）
       const labelGroups = svg.querySelectorAll<SVGGElement>('.cutplan-part-label');
       labelGroups.forEach((g) => {
         const nameEl = g.querySelector<SVGTextElement>('.cutplan-part-name');
         const sizeEl = g.querySelector<SVGTextElement>('.cutplan-part-size');
-        if (nameEl && sizeEl) {
+        if (sizeEl) {
           if (!g.hasAttribute('data-center-y')) {
-            const y1 = parseFloat(nameEl.getAttribute('y') || '0');
-            const y2 = parseFloat(sizeEl.getAttribute('y') || '0');
-            const centerY = (y1 + y2) / 2;
-            g.setAttribute('data-center-y', String(centerY));
+            const y = parseFloat(sizeEl.getAttribute('y') || '0');
+            g.setAttribute('data-center-y', String(y));
           }
           const centerY = parseFloat(g.getAttribute('data-center-y') || '0');
-          const offsetY = Math.max(svgFs * 0.5, 2);
-          nameEl.setAttribute('y', (centerY - offsetY).toFixed(1));
-          sizeEl.setAttribute('y', (centerY + offsetY).toFixed(1));
+          // cutplan-part-size の表示位置はその対象 cutplan-svg-part の上下中央
+          sizeEl.setAttribute('y', centerY.toFixed(1));
+          sizeEl.setAttribute('dominant-baseline', 'central');
+
+          if (nameEl) {
+            const offsetY = Math.max(svgFs * 1.1, 4);
+            nameEl.setAttribute('y', (centerY - offsetY).toFixed(1));
+          }
         }
       });
     });
@@ -370,10 +375,10 @@ export class ViewerUI {
 
   /**
    * 木取り図に表示する寸法・サイズ数値をフォーマットする
-   * 有効桁数は小数点第2位まで（toFixed(2)）
+   * 有効桁数は小数点第2までとするが、小数点が無い桁（末尾の不要なゼロ・小数点）は表示しない
    */
   public static formatCutPlanSize(val: number): string {
-    return val.toFixed(2);
+    return parseFloat(val.toFixed(2)).toString();
   }
 
   /**
@@ -429,7 +434,7 @@ export class ViewerUI {
     // viewBox の幅（基準1820mm）に応じたスケーリング比率を計算し、フォントサイズや寸法線を連動
     const scale = ViewerUI.calculateCutPlanScale(svgWidth);
     const fsText = ViewerUI.calculateCutPlanFontSize(scale, false);
-    const offsetY = Math.max(14 * scale, 2);
+    const offsetY = Math.max(fsText * 1.1, 4);
 
     let svgInner = '';
 
@@ -571,14 +576,14 @@ export class ViewerUI {
         svgInner += `<rect x="${px}" y="${py}" width="${pw}" height="${ph}" class="cutplan-svg-part" fill="#fde68a" stroke="#d97706" stroke-width="2" rx="0" />`;
       }
 
-      // パーツ名・寸法ラベル (幅 × 長さを明記: getPartLabelInfo による共通処理)
+      // パーツ名・寸法ラベル (cutplan-part-size はパーツの上下中央 labelY に配置)
       const labelX = px + pw / 2;
       const labelY = py + ph / 2;
       const { partName, sizeText } = ViewerUI.getPartLabelInfo(item, true);
       svgInner += `
-        <g class="cutplan-part-label">
+        <g class="cutplan-part-label" data-center-y="${labelY}">
           <text x="${labelX}" y="${labelY - offsetY}" class="cutplan-part-name" font-size="${fsText}" font-weight="bold" fill="#92400e" text-anchor="middle">${partName}</text>
-          <text x="${labelX}" y="${labelY + offsetY}" class="cutplan-part-size" font-size="${fsText}" font-weight="bold" fill="#78350f" text-anchor="middle">${sizeText}</text>
+          <text x="${labelX}" y="${labelY}" class="cutplan-part-size" font-size="${fsText}" font-weight="bold" fill="#78350f" text-anchor="middle" dominant-baseline="central">${sizeText}</text>
         </g>
       `;
     }
@@ -655,8 +660,7 @@ export class ViewerUI {
     // viewBox の幅（基準1820mm）に応じたスケーリング比率を計算し、フォントサイズや寸法線を連動
     const scale = ViewerUI.calculateCutPlanScale(boardWidth);
     const fsText = ViewerUI.calculateCutPlanFontSize(scale, false);
-    const offsetY1 = Math.max(10 * scale, 2);
-    const offsetY2 = Math.max(14 * scale, 2);
+    const offsetY1 = Math.max(fsText * 1.1, 4);
 
     let svgInner = '';
 
@@ -681,12 +685,13 @@ export class ViewerUI {
       // パーツ本体
       svgInner += `<rect x="${curX}" y="0" width="${pw}" height="${boardHeight}" class="cutplan-svg-part" fill="#fde68a" stroke="#d97706" stroke-width="2" rx="0" />`;
 
-      // パーツラベル & サイズ (共通処理化: getPartLabelInfo)
+      // パーツラベル & サイズ (cutplan-part-size はパーツの上下中央 boardHeight / 2 に配置)
       const midX = curX + pw / 2;
+      const midY = boardHeight / 2;
       svgInner += `
-        <g class="cutplan-part-label">
-          <text x="${midX}" y="${boardHeight / 2 - offsetY1}" class="cutplan-part-name" font-size="${fsText}" font-weight="bold" fill="#92400e" text-anchor="middle">${partName}</text>
-          <text x="${midX}" y="${boardHeight / 2 + offsetY2}" class="cutplan-part-size" font-size="${fsText}" font-weight="bold" fill="#78350f" text-anchor="middle">${sizeText}</text>
+        <g class="cutplan-part-label" data-center-y="${midY}">
+          <text x="${midX}" y="${midY - offsetY1}" class="cutplan-part-name" font-size="${fsText}" font-weight="bold" fill="#92400e" text-anchor="middle">${partName}</text>
+          <text x="${midX}" y="${midY}" class="cutplan-part-size" font-size="${fsText}" font-weight="bold" fill="#78350f" text-anchor="middle" dominant-baseline="central">${sizeText}</text>
         </g>
       `;
 
@@ -780,10 +785,13 @@ export class ViewerUI {
     });
 
     this.layerManager.onSelect((objectId) => {
+      this.renderLayerTree();
       this.updateSelectedLayerItem(objectId);
+      if (this.isSelectingFrom3D) return;
+
       if (objectId) {
         const obj = this.viewer.getObjectById(objectId);
-        this.handleObjectSelected(obj);
+        this.handleObjectSelected(obj, 'layerTree');
       } else {
         this.hideInspector();
       }
@@ -975,11 +983,40 @@ export class ViewerUI {
 
   /**
    * パーツが選択された際の詳細ビュー (インスペクタ) 表示
+   * @param object 選択対象のオブジェクト (null で選択解除)
+   * @param source 選択の発生元 ('viewer3d': 3Dキャンバスからのクリック/タップ, 'layerTree': レイヤーツリーからのタップ/クリック)
    */
-  public handleObjectSelected(object: CadiyObject | null): void {
+  public handleObjectSelected(object: CadiyObject | null, source: 'viewer3d' | 'layerTree' = 'viewer3d'): void {
     if (!object) {
       this.hideInspector();
+      if (source === 'viewer3d') {
+        this.isSelectingFrom3D = true;
+        try {
+          this.layerManager.selectObject(null);
+        } finally {
+          this.isSelectingFrom3D = false;
+        }
+      }
       return;
+    }
+
+    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+
+    // スマホ表示時は layer-object-item をタップした時だけ inspector-card を表示する
+    // (スマホで3Dビューをタップ/スワイプしたときは inspector-card を非表示にする)
+    if (isMobile && source !== 'layerTree') {
+      this.hideInspector();
+      return;
+    }
+
+    // 3Dビューから選択された場合はレイヤーマネージャーの選択状態も同期
+    if (source === 'viewer3d') {
+      this.isSelectingFrom3D = true;
+      try {
+        this.layerManager.selectObject(object.id);
+      } finally {
+        this.isSelectingFrom3D = false;
+      }
     }
 
     const props = formatObjectProperties(object);

@@ -158,6 +158,7 @@ export class ModelBuilder {
     if (!obj.dummy) {
       const edges = new THREE.EdgesGeometry(geometry, 25);
       const line = new THREE.LineSegments(edges, this.materialFactory.getEdgeMaterial());
+      line.raycast = () => {}; // エッジ線自体はレイキャスト交差判定の対象外とする
       mesh.add(line);
     }
 

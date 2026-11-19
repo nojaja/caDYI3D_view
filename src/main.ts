@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     container,
     onObjectSelected: (object) => {
       if (ui) {
-        ui.handleObjectSelected(object);
+        ui.handleObjectSelected(object, 'viewer3d');
       }
     },
   });
