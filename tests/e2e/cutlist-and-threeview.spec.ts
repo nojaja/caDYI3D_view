@@ -95,16 +95,16 @@ test.describe('caDIY3D Web Viewer - 材料取り図 & 三面図 E2E検証', () =
     await expect(firstHeader).toContainText('1820mm');
   });
 
-  test('003.cadiy4 で材料取り図に全部で20個の素材が表示され、それぞれ木取り線が表示されること', async ({ page }) => {
+  test('003.cadiy4 で材料取り図にdummy部材が除外され14個の素材が表示され、それぞれ木取り線が表示されること', async ({ page }) => {
     await page.goto('/?model=models/003.cadiy4');
     await page.waitForFunction(() => (window as any).__VIEWER_READY__ === true, { timeout: 10000 });
 
     await page.click('#mode-btn-cutlist');
     await expect(page.locator('#cutlist-view-container')).toBeVisible();
 
-    // 全部で20個の素材シートが表示されること
+    // dummy部材(6個)が除外され、全部で14個の実素材シートが表示されること
     const sheets = page.locator('.cutplan-sheet');
-    await expect(sheets).toHaveCount(20);
+    await expect(sheets).toHaveCount(14);
 
     // 木取り線 (のこ刃切り代マーク) が多数表示されていること
     const kerfLines = page.locator('.cutplan-kerf-line');

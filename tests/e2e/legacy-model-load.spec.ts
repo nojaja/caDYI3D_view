@@ -7,15 +7,15 @@ test.describe('caDIY3D Web Viewer - 旧バージョン (.cadiy) 読み込み E2E
     await page.goto('/');
     await page.waitForFunction(() => (window as any).__VIEWER_READY__ === true, { timeout: 10000 });
 
-    const cadiyFilePath = path.resolve('migration/NASケース.cadiy');
+    const cadiyFilePath = path.resolve('tests/data/008.cadiy');
 
     // ファイル入力（#file-input）に .cadiy をセット
     const fileInput = page.locator('#file-input');
     await fileInput.setInputFiles(cadiyFilePath);
 
-    // モデル名称が NASケース に更新されること
+    // モデル名称が 008 に更新されること
     const modelTitle = page.locator('#model-title');
-    await expect(modelTitle).toHaveText('NASケース', { timeout: 10000 });
+    await expect(modelTitle).toHaveText('008', { timeout: 10000 });
 
     // レイヤー一覧パネルにレイヤーが生成されていること
     const layerItems = page.locator('.layer-item');
