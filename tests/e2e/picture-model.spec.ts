@@ -6,10 +6,15 @@ test.describe('caDIY3D Web Viewer - 画像オブジェクト(picture) 3D表示 E
     await page.waitForFunction(() => (window as any).__VIEWER_READY__ === true, { timeout: 10000 });
   });
 
-  test('3Dビューで画像オブジェクト(004.cadiy4)が正しくロードされ、画像テクスチャが描画されること', async ({ page }) => {
-    // モデルタイトルが "004" またはオブジェクト名 "caDIY3D-X" であること
+  test('3Dビューで画像オブジェクト(004.cadiy4)が正しくロードされ、画像テクスチャが描画されること', async ({ page, isMobile }) => {
+    // モデルタイトル（PC表示時のみ表示）
     const modelTitle = page.locator('#model-title');
-    await expect(modelTitle).toBeVisible();
+    if (isMobile) {
+      await expect(modelTitle).toBeHidden();
+      await page.locator('.layer-panel-title').click();
+    } else {
+      await expect(modelTitle).toBeVisible();
+    }
 
     // レイヤーツリーを展開してパーツ一覧から "caDIY3D-X" をクリック
     const layerHeader = page.locator('.layer-item-header').first();

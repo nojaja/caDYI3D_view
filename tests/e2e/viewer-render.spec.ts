@@ -64,16 +64,25 @@ test.describe('caDIY3D Web Viewer - 3D Render Verification', () => {
     expect(renderStats.nonEmptyPixelRatio).toBeGreaterThan(0.01);
   });
 
-  test('スマホ（iPhone）環境でUIが崩れず操作可能であること', async ({ page }) => {
+  test('スマホ（iPhone）環境でUIが崩れず操作可能であること', async ({ page, isMobile }) => {
+    test.skip(!isMobile, 'スマホ環境専用のテスト');
     await page.goto('/?model=models/test_rack.cadiy4');
 
     const canvas = page.locator('canvas.webgl-canvas');
     await expect(canvas).toBeVisible();
 
-    const bottomControls = page.locator('.bottom-controls');
-    await expect(bottomControls).toBeVisible();
+    const bottomControls = page.locator('#bottom-controls');
+    await expect(bottomControls).toBeHidden();
 
-    await page.click('#btn-iso');
+    const viewModeSelector = page.locator('#view-mode-selector');
+    await expect(viewModeSelector).toBeVisible();
+
+    // 材料取り図に切り替えて動作確認
+    await page.click('#mode-btn-cutlist');
+    await page.waitForTimeout(500);
+
+    // 3Dviewに戻す
+    await page.click('#mode-btn-3d');
     await page.waitForTimeout(500);
 
     await page.screenshot({ path: 'tests/data/verification_iphone_capture.png' });

@@ -61,7 +61,7 @@ test.describe('caDIY3D Web Viewer - 材料取り図 & 三面図 E2E検証', () =
     await page.screenshot({ path: 'tests/data/threeview_capture.png' });
   });
 
-  test('三面図から再度3Dviewに切り替えた際、3Dビューポートおよび視点コントロールが復帰すること', async ({ page }) => {
+  test('三面図から再度3Dviewに切り替えた際、3Dビューポートおよび視点コントロールが復帰すること', async ({ page, isMobile }) => {
     // 三面図に切り替え
     await page.click('#mode-btn-threeview');
     await expect(page.locator('#threeview-container')).toBeVisible();
@@ -70,9 +70,13 @@ test.describe('caDIY3D Web Viewer - 材料取り図 & 三面図 E2E検証', () =
     await page.click('#mode-btn-3d');
     await expect(page.locator('#threeview-container')).toBeHidden();
 
-    // 3D用の視点コントロールが再度表示されること
+    // 3D用の視点コントロールが再度表示されること（スマホ環境では非表示）
     const bottomControls = page.locator('#bottom-controls');
-    await expect(bottomControls).toBeVisible();
+    if (isMobile) {
+      await expect(bottomControls).toBeHidden();
+    } else {
+      await expect(bottomControls).toBeVisible();
+    }
   });
 
   test('001.cadiy4 で材料取り図に5つの素材シートが表示され、木取り線が表示されること', async ({ page }) => {

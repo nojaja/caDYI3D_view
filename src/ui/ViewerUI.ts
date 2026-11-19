@@ -4,7 +4,7 @@ import { CadiyObject, Cadiy4Data } from '../types/cadiy4';
 import { ViewModeManager, ViewMode } from '../core/ViewModeManager';
 import { LayerManager, LayerTreeNode } from '../core/LayerManager';
 import { formatObjectProperties } from '../utils/propertyFormatter';
-import { CutListCalculator, CutPlanSheet } from '../core/CutListCalculator';
+import { CutListCalculator, CutPlanSheet, CutPlanItem } from '../core/CutListCalculator';
 
 export class ViewerUI {
   private viewer: Viewer;
@@ -70,6 +70,15 @@ export class ViewerUI {
     // 1. ファイル選択ボタン
     const openFileBtn = document.getElementById('btn-open-file');
     if (openFileBtn && this.fileInput) {
+      // iOS (iPhone / iPad / iPod) では独自拡張子の accept 指定によって「ファイル」アプリで
+      // グレーアウトして選択できなくなるため、iOS環境では accept 属性を解除して全ファイルを選択可能にする
+      const isIOS =
+        /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      if (isIOS) {
+        this.fileInput.removeAttribute('accept');
+      }
+
       openFileBtn.addEventListener('click', () => {
         this.fileInput.click();
       });
@@ -131,6 +140,25 @@ export class ViewerUI {
       this.hideInspector();
       this.layerManager.selectObject(null);
       this.updateSelectedLayerItem(null);
+    });
+
+    // 5. レイヤーパネルタイトル開閉トグル
+    const layerPanelTitle = document.querySelector('.layer-panel-title');
+    layerPanelTitle?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.layerPanel.classList.toggle('expanded');
+    });
+
+    const layerPanelHeader = document.querySelector('.layer-panel-header');
+    layerPanelHeader?.addEventListener('click', () => {
+      this.layerPanel.classList.toggle('expanded');
+    });
+
+    // 6. ウィンドウリサイズ時に材料取り図のフォントサイズを追従調整
+    window.addEventListener('resize', () => {
+      if (this.viewModeManager.getCurrentMode() === 'cutList') {
+        this.updateCutPlanFontSizes();
+      }
     });
   }
 
@@ -207,6 +235,64 @@ export class ViewerUI {
         this.cutlistSheetsContainer.appendChild(sheetEl);
       }
     }
+
+    // レンダリング後に画面サイズに合わせてフォントサイズを動的調整
+    this.updateCutPlanFontSizes();
+  }
+
+  /**
+   * 画面上にレンダリングされた SVG 木取り図内のフォントサイズを動的に調整
+   * スケール後のサイズが常に class="cutplan-sheet-header"（13px）相当、スマホ表示時は -2 相当（11px）になるようにする
+   */
+  public updateCutPlanFontSizes(): void {
+    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+    // PC表示時は 13px (class="cutplan-sheet-header" 相当)、スマホ表示時は 11px (現在のフォントサイズ -2 相当)
+    const targetScreenFs = isMobile ? 11 : 13;
+
+    const svgs = this.cutlistSheetsContainer.querySelectorAll<SVGSVGElement>('svg.cutplan-svg-canvas');
+    svgs.forEach((svg) => {
+      // ブラウザの実効スケーリング比率 (CTM.a) を取得。取得できない環境では viewBox と rect から算出
+      const ctm = svg.getScreenCTM ? svg.getScreenCTM() : null;
+      let scale = ctm ? ctm.a : 0;
+      if (!scale || scale <= 0) {
+        const viewBox = svg.viewBox.baseVal;
+        const rect = svg.getBoundingClientRect();
+        if (!rect.width || !viewBox.width) return;
+        scale = Math.min(
+          rect.width / viewBox.width,
+          rect.height > 0 && viewBox.height > 0 ? rect.height / viewBox.height : rect.width / viewBox.width
+        );
+      }
+      if (scale <= 0) return;
+
+      // 画面上で PC: 13px、スマホ: 11px になるように SVG 座標系フォントサイズを同一ロジックで決定
+      const svgFs = Math.max(targetScreenFs / scale, 2);
+
+      // SVG 内のすべてのテキスト要素（端材, 斜めカット, 木取り線, 部材寸法, 部材名, 外寸等）のフォントサイズを同一ロジックで設定
+      const textElements = svg.querySelectorAll<SVGTextElement>('text');
+      textElements.forEach((el) => {
+        el.setAttribute('font-size', svgFs.toFixed(1));
+      });
+
+      // 部材名と寸法のYオフセットをフォントサイズに合わせて調整
+      const labelGroups = svg.querySelectorAll<SVGGElement>('.cutplan-part-label');
+      labelGroups.forEach((g) => {
+        const nameEl = g.querySelector<SVGTextElement>('.cutplan-part-name');
+        const sizeEl = g.querySelector<SVGTextElement>('.cutplan-part-size');
+        if (nameEl && sizeEl) {
+          if (!g.hasAttribute('data-center-y')) {
+            const y1 = parseFloat(nameEl.getAttribute('y') || '0');
+            const y2 = parseFloat(sizeEl.getAttribute('y') || '0');
+            const centerY = (y1 + y2) / 2;
+            g.setAttribute('data-center-y', String(centerY));
+          }
+          const centerY = parseFloat(g.getAttribute('data-center-y') || '0');
+          const offsetY = Math.max(svgFs * 0.5, 2);
+          nameEl.setAttribute('y', (centerY - offsetY).toFixed(1));
+          sizeEl.setAttribute('y', (centerY + offsetY).toFixed(1));
+        }
+      });
+    });
   }
 
   /**
@@ -220,16 +306,108 @@ export class ViewerUI {
     header.className = 'cutplan-sheet-header';
     header.innerHTML = `
       <span><strong>材料 #${sheet.baseId + 1}</strong> (${sheet.lumberName || '合板'}) - 原板: ${sheet.sheetWidthMm} × ${sheet.sheetLengthMm} mm</span>
-      <span>使用: ${sheet.sheetWidthMm} × ${sheet.usedLengthMm.toFixed(0)} mm / 端材: ${sheet.remainingLengthMm.toFixed(0)} mm (歩留まり: ${sheet.yieldRatePercent.toFixed(1)}%)</span>
+      <span>使用: ${sheet.sheetWidthMm} × ${sheet.usedLengthMm.toFixed(0)} mm / 端材: ${sheet.remainingLengthMm.toFixed(0)} mm <span class="cutplan-yield">(歩留まり: ${sheet.yieldRatePercent.toFixed(1)}%)</span></span>
     `;
 
-    const canvas = document.createElement('div');
-    canvas.className = 'cutplan-board-canvas-2d';
-    canvas.innerHTML = ViewerUI.render2DSheetSvg(sheet);
+    const main = document.createElement('div');
+    main.className = 'cutplan-canvas-main';
+    main.innerHTML = ViewerUI.render2DSheetSvg(sheet);
 
     sheetEl.appendChild(header);
-    sheetEl.appendChild(canvas);
+    sheetEl.appendChild(main);
     return sheetEl;
+  }
+
+  /**
+   * 木取り図シートの基準長（1820mm）に対するスケーリング比率を計算する
+   */
+  public static calculateCutPlanScale(lengthMm: number): number {
+    return Math.max(lengthMm / 1820, 0.15);
+  }
+
+  /**
+   * 木取り図 SVG 内の基準フォントサイズを決定する共通処理
+   * PC表示時はスケール後 13px（cutplan-sheet-header 相当）、
+   * スマホ表示時はスケール後 11px（現在のフォントサイズ -2 相当）になるように決定する
+   */
+  public static calculateCutPlanFontSize(scale: number, isMobile: boolean = false): number {
+    const baseFs = isMobile ? 24 : 28;
+    return Math.max(Math.round(baseFs * scale), 3);
+  }
+
+  /**
+   * 木取り図 SVG 内の外寸寸法線および寸法テキスト（class="cutplan-dim-x", class="cutplan-dim-y"）を生成
+   * viewBox 幅に応じた scale に比例してフォントサイズや寸法線を調整する
+   */
+  public static renderSvgDimensions(
+    width: number,
+    height: number,
+    dimXText: string,
+    dimYText: string,
+    scale: number = 1.0,
+    isMobile: boolean = false
+  ): string {
+    const dimFs = ViewerUI.calculateCutPlanFontSize(scale, isMobile);
+    const guideL = 35 * scale;
+    const lineX = 25 * scale;
+    const textX = 40 * scale;
+
+    const guideB = 35 * scale;
+    const lineY = 25 * scale;
+    const textY = 58 * scale;
+    const strokeW = Math.max(1.5 * scale, 0.8);
+
+    return `
+      <!-- 縦外寸 (Y方向) -->
+      <path d="M 0 0 h -${guideL} M 0 ${height} h -${guideL} M -${lineX} 0 v ${height}" stroke="#9ca3af" stroke-width="${strokeW}" fill="none" class="cutplan-dim-guide" />
+      <text x="-${textX}" y="${height / 2}" class="cutplan-dim-y" text-anchor="middle" dominant-baseline="middle" transform="rotate(-90 -${textX} ${height / 2})" font-size="${dimFs}" font-weight="bold" fill="#4b5563">${dimYText}</text>
+
+      <!-- 横外寸 (X方向) -->
+      <path d="M 0 ${height} v ${guideB} M ${width} ${height} v ${guideB} M 0 ${height + lineY} h ${width}" stroke="#9ca3af" stroke-width="${strokeW}" fill="none" class="cutplan-dim-guide" />
+      <text x="${width / 2}" y="${height + textY}" class="cutplan-dim-x" text-anchor="middle" font-size="${dimFs}" font-weight="bold" fill="#4b5563">${dimXText}</text>
+    `;
+  }
+
+  /**
+   * 部材のラベル情報（部材名・サイズ文字列）を共通取得する
+   * class="cutplan-part-size" には「寸法:」等の接頭辞や単位「mm」を含めず数値のみを返す
+   */
+  public static getPartLabelInfo(item: CutPlanItem, is2D: boolean = false): { partName: string; sizeText: string } {
+    const partName = item.object.partName || item.object.name;
+    const sizeText = is2D
+      ? `${item.widthMm.toFixed(0)} × ${item.lengthMm.toFixed(0)}`
+      : `${item.lengthMm.toFixed(0)}`;
+    return { partName, sizeText };
+  }
+
+  /**
+   * 斜めカットのラベルSVG要素を生成する
+   * 斜め線と同じ角度で回転し、単位 mm なしで描画する
+   */
+  public static renderDiagonalCutLabel(
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    cutA: number,
+    cutB: number,
+    fsText: number,
+    isTopCorner: boolean
+  ): string {
+    // 常に左から右へ向かうベクトルに正規化して文字が反転しないようにする
+    let sx1 = x1, sy1 = y1, sx2 = x2, sy2 = y2;
+    if (sx1 > sx2) {
+      sx1 = x2; sy1 = y2; sx2 = x1; sy2 = y1;
+    }
+    const dx = sx2 - sx1;
+    const dy = sy2 - sy1;
+    const angleDeg = Math.atan2(dy, dx) * 180 / Math.PI;
+    const midX = (sx1 + sx2) / 2;
+    const midY = (sy1 + sy2) / 2;
+    // 上側コーナーは線の外側(上)に-0.4em、下側コーナーは線の外側(下)に1.2emオフセット
+    const dyAttr = isTopCorner ? '-0.4em' : '1.2em';
+
+    return `<text x="${midX.toFixed(1)}" y="${midY.toFixed(1)}" transform="rotate(${angleDeg.toFixed(1)}, ${midX.toFixed(1)}, ${midY.toFixed(1)})" dy="${dyAttr}" class="cutplan-diag-cut-label" font-size="${fsText}" font-weight="bold" fill="#b91c1c" text-anchor="middle">✂ 斜めカット: ${cutA.toFixed(1)} × ${cutB.toFixed(1)}</text>`;
   }
 
   /**
@@ -238,6 +416,11 @@ export class ViewerUI {
   public static render2DSheetSvg(sheet: CutPlanSheet): string {
     const svgWidth = sheet.sheetLengthMm;
     const svgHeight = sheet.sheetWidthMm;
+
+    // viewBox の幅（基準1820mm）に応じたスケーリング比率を計算し、フォントサイズや寸法線を連動
+    const scale = ViewerUI.calculateCutPlanScale(svgWidth);
+    const fsText = ViewerUI.calculateCutPlanFontSize(scale, false);
+    const offsetY = Math.max(14 * scale, 2);
 
     let svgInner = '';
 
@@ -251,16 +434,7 @@ export class ViewerUI {
     `;
 
     // 原板枠（背景・端材下地）
-    svgInner += `<rect x="0" y="0" width="${svgWidth}" height="${svgHeight}" fill="url(#scrap-hatch-${sheet.baseId})" stroke="#94a3b8" stroke-width="2" rx="4" />`;
-
-    // 全体端材ラベル（右側または余白）
-    if (sheet.remainingLengthMm > 50) {
-      svgInner += `
-        <text x="${svgWidth - 20}" y="${svgHeight / 2}" font-size="28" font-weight="600" fill="#94a3b8" text-anchor="end" dominant-baseline="middle">
-          端材領域 (残 ${sheet.remainingLengthMm.toFixed(0)}mm)
-        </text>
-      `;
-    }
+    svgInner += `<rect x="0" y="0" width="${svgWidth}" height="${svgHeight}" fill="url(#scrap-hatch-${sheet.baseId})" stroke="#94a3b8" stroke-width="2" rx="0" />`;
 
     // 1. 各パーツ本体を描画
     for (const item of sheet.items) {
@@ -297,10 +471,11 @@ export class ViewerUI {
         svgInner += `<polygon points="${scrapPoints}" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,4" />`;
         svgInner += `<polygon points="${polyPoints}" class="cutplan-svg-part" fill="#fde68a" stroke="#d97706" stroke-width="2" />`;
         svgInner += `<line x1="${px + pw - cutB}" y1="${py}" x2="${px + pw}" y2="${py + cutA}" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2.5" />`;
-
-        const midX = px + pw - cutB / 2;
-        const midY = py + cutA / 2;
-        svgInner += `<text x="${midX}" y="${Math.max(py + 32, midY - 12)}" font-size="28" font-weight="bold" fill="#b91c1c" text-anchor="middle">✂ 斜めカット: ${cutA.toFixed(1)} × ${cutB.toFixed(1)}mm</text>`;
+        svgInner += ViewerUI.renderDiagonalCutLabel(
+          px + pw - cutB, py,
+          px + pw, py + cutA,
+          cutA, cutB, fsText, true
+        );
       } else if (cut4) {
         // 斜めカット (Corner 4: 木取り図上はパーツ左端のカット)
         const cutA = cut4.faceADist * 1000;
@@ -323,10 +498,11 @@ export class ViewerUI {
         svgInner += `<polygon points="${scrapPoints}" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,4" />`;
         svgInner += `<polygon points="${polyPoints}" class="cutplan-svg-part" fill="#fde68a" stroke="#d97706" stroke-width="2" />`;
         svgInner += `<line x1="${px + cutB}" y1="${py + ph}" x2="${px}" y2="${py + ph - cutA}" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2.5" />`;
-
-        const midX = px + cutB / 2;
-        const midY = py + ph - cutA / 2;
-        svgInner += `<text x="${midX}" y="${Math.min(py + ph - 12, midY + 14)}" font-size="28" font-weight="bold" fill="#b91c1c" text-anchor="middle">✂ 斜めカット: ${cutA.toFixed(1)} × ${cutB.toFixed(1)}mm</text>`;
+        svgInner += ViewerUI.renderDiagonalCutLabel(
+          px, py + ph - cutA,
+          px + cutB, py + ph,
+          cutA, cutB, fsText, false
+        );
       } else if (cut5) {
         // 斜めカット (Corner 5: 木取り図上はパーツ右端のカット)
         const cutA = cut5.faceADist * 1000;
@@ -349,10 +525,11 @@ export class ViewerUI {
         svgInner += `<polygon points="${scrapPoints}" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,4" />`;
         svgInner += `<polygon points="${polyPoints}" class="cutplan-svg-part" fill="#fde68a" stroke="#d97706" stroke-width="2" />`;
         svgInner += `<line x1="${px + pw - cutB}" y1="${py + ph}" x2="${px + pw}" y2="${py + ph - cutA}" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2.5" />`;
-
-        const midX = px + pw - cutB / 2;
-        const midY = py + ph - cutA / 2;
-        svgInner += `<text x="${midX}" y="${Math.min(py + ph - 12, midY + 14)}" font-size="28" font-weight="bold" fill="#b91c1c" text-anchor="middle">✂ 斜めカット: ${cutA.toFixed(1)} × ${cutB.toFixed(1)}mm</text>`;
+        svgInner += ViewerUI.renderDiagonalCutLabel(
+          px + pw - cutB, py + ph,
+          px + pw, py + ph - cutA,
+          cutA, cutB, fsText, false
+        );
       } else if (cut6) {
         // 斜めカット (左上角: Corner 6)
         const cutA = cut6.faceADist * 1000;
@@ -375,22 +552,25 @@ export class ViewerUI {
         svgInner += `<polygon points="${scrapPoints}" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,4" />`;
         svgInner += `<polygon points="${polyPoints}" class="cutplan-svg-part" fill="#fde68a" stroke="#d97706" stroke-width="2" />`;
         svgInner += `<line x1="${px + cutB}" y1="${py}" x2="${px}" y2="${py + cutA}" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2.5" />`;
-
-        const midX = px + cutB / 2;
-        const midY = py + cutA / 2;
-        svgInner += `<text x="${midX}" y="${Math.max(py + 32, midY - 12)}" font-size="28" font-weight="bold" fill="#b91c1c" text-anchor="middle">✂ 斜めカット: ${cutA.toFixed(1)} × ${cutB.toFixed(1)}mm</text>`;
+        svgInner += ViewerUI.renderDiagonalCutLabel(
+          px, py + cutA,
+          px + cutB, py,
+          cutA, cutB, fsText, true
+        );
       } else {
-        // 通常の長方形パーツ
-        svgInner += `<rect x="${px}" y="${py}" width="${pw}" height="${ph}" class="cutplan-svg-part" fill="#fde68a" stroke="#d97706" stroke-width="2" rx="2" />`;
+        // 通常の長方形パーツ (border-radius廃止: rx="0")
+        svgInner += `<rect x="${px}" y="${py}" width="${pw}" height="${ph}" class="cutplan-svg-part" fill="#fde68a" stroke="#d97706" stroke-width="2" rx="0" />`;
       }
 
-      // パーツ名・寸法ラベル (幅 × 長さを明記)
+      // パーツ名・寸法ラベル (幅 × 長さを明記: getPartLabelInfo による共通処理)
       const labelX = px + pw / 2;
       const labelY = py + ph / 2;
-      const partTitle = item.object.partName || item.object.name;
+      const { partName, sizeText } = ViewerUI.getPartLabelInfo(item, true);
       svgInner += `
-        <text x="${labelX}" y="${labelY - 14}" class="cutplan-part-label" font-size="34" font-weight="bold" fill="#92400e" text-anchor="middle">${partTitle}</text>
-        <text x="${labelX}" y="${labelY + 28}" class="cutplan-part-dimensions" font-size="28" font-weight="600" fill="#78350f" text-anchor="middle">寸法: ${item.widthMm.toFixed(0)} × ${item.lengthMm.toFixed(0)} mm</text>
+        <g class="cutplan-part-label">
+          <text x="${labelX}" y="${labelY - offsetY}" class="cutplan-part-name" font-size="${fsText}" font-weight="bold" fill="#92400e" text-anchor="middle">${partName}</text>
+          <text x="${labelX}" y="${labelY + offsetY}" class="cutplan-part-size" font-size="${fsText}" font-weight="bold" fill="#78350f" text-anchor="middle">${sizeText}</text>
+        </g>
       `;
     }
 
@@ -408,14 +588,13 @@ export class ViewerUI {
         const cutX = px + pw;
         svgInner += `
           <line x1="${cutX}" y1="${py}" x2="${cutX}" y2="${py + ph}" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2.5" stroke-dasharray="6,4" />
-          <text x="${cutX + 6}" y="${py + 26}" font-size="20" font-weight="bold" fill="#dc2626">✂ 木取り線 (${sheet.cutWidthMm}mm)</text>
         `;
         // パーツ右側の端材ラベル
         const scrapWidth = svgWidth - cutX;
-        if (scrapWidth >= 50) {
+        if (scrapWidth >= 50 * scale) {
           svgInner += `
-            <text x="${cutX + scrapWidth / 2}" y="${py + ph / 2}" font-size="24" font-weight="600" fill="#94a3b8" text-anchor="middle" dominant-baseline="middle">
-              端材 (${scrapWidth.toFixed(0)}mm)
+            <text x="${cutX + scrapWidth / 2}" y="${py + ph / 2}" class="cutplan-scrap-label" font-size="${fsText}" font-weight="600" fill="#94a3b8" text-anchor="middle" dominant-baseline="middle">
+              端材 (${scrapWidth.toFixed(0)})
             </text>
           `;
         }
@@ -431,8 +610,117 @@ export class ViewerUI {
       }
     }
 
+    // 3. 縦横外寸 (class="cutplan-dim-x", class="cutplan-dim-y") を描画
+    svgInner += ViewerUI.renderSvgDimensions(
+      svgWidth,
+      svgHeight,
+      `${sheet.sheetLengthMm}`,
+      `${sheet.sheetWidthMm}`,
+      scale,
+      false
+    );
+
+    const marginL = 70 * scale;
+    const marginT = 10 * scale;
+    const marginR = 20 * scale;
+    const marginB = 80 * scale;
+
     return `
-      <svg viewBox="0 0 ${svgWidth} ${svgHeight}" class="cutplan-svg-canvas" preserveAspectRatio="xMidYMid meet">
+      <svg viewBox="-${marginL} -${marginT} ${svgWidth + marginL + marginR} ${svgHeight + marginT + marginB}" class="cutplan-svg-canvas" preserveAspectRatio="xMidYMid meet">
+        ${svgInner}
+      </svg>
+    `;
+  }
+
+  /**
+   * 1D 角材シートの材料取り図 SVG 文字列を生成
+   */
+  public static render1DSheetSvg(sheet: CutPlanSheet): string {
+    const totalLen = sheet.sheetLengthMm > 0
+      ? sheet.sheetLengthMm
+      : Math.max(sheet.usedLengthMm + sheet.remainingLengthMm, 1);
+    const boardWidth = totalLen;
+    const boardHeight = 120;
+    const actualThick = sheet.sheetWidthMm || 89;
+
+    // viewBox の幅（基準1820mm）に応じたスケーリング比率を計算し、フォントサイズや寸法線を連動
+    const scale = ViewerUI.calculateCutPlanScale(boardWidth);
+    const fsText = ViewerUI.calculateCutPlanFontSize(scale, false);
+    const offsetY1 = Math.max(10 * scale, 2);
+    const offsetY2 = Math.max(14 * scale, 2);
+
+    let svgInner = '';
+
+    // 定義 (パターン等)
+    svgInner += `
+      <defs>
+        <pattern id="scrap-hatch-${sheet.baseId}" width="20" height="20" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+          <line x1="0" y1="0" x2="0" y2="20" stroke="#cbd5e1" stroke-width="3" />
+        </pattern>
+      </defs>
+    `;
+
+    // 原木枠背景
+    svgInner += `<rect x="0" y="0" width="${boardWidth}" height="${boardHeight}" fill="#fdf8f0" stroke="#d97706" stroke-width="2" rx="0" />`;
+
+    let curX = 0;
+    for (let i = 0; i < sheet.items.length; i++) {
+      const item = sheet.items[i];
+      const pw = item.lengthMm;
+      const { partName, sizeText } = ViewerUI.getPartLabelInfo(item, false);
+
+      // パーツ本体
+      svgInner += `<rect x="${curX}" y="0" width="${pw}" height="${boardHeight}" class="cutplan-svg-part" fill="#fde68a" stroke="#d97706" stroke-width="2" rx="0" />`;
+
+      // パーツラベル & サイズ (共通処理化: getPartLabelInfo)
+      const midX = curX + pw / 2;
+      svgInner += `
+        <g class="cutplan-part-label">
+          <text x="${midX}" y="${boardHeight / 2 - offsetY1}" class="cutplan-part-name" font-size="${fsText}" font-weight="bold" fill="#92400e" text-anchor="middle">${partName}</text>
+          <text x="${midX}" y="${boardHeight / 2 + offsetY2}" class="cutplan-part-size" font-size="${fsText}" font-weight="bold" fill="#78350f" text-anchor="middle">${sizeText}</text>
+        </g>
+      `;
+
+      // 木取り線（切り代）
+      const isLast = i === sheet.items.length - 1;
+      if (!isLast || sheet.remainingLengthMm > 0) {
+        const kerfWidth = Math.max(sheet.cutWidthMm * 4 * scale, 12 * scale);
+        svgInner += `
+          <rect x="${curX + pw}" y="0" width="${kerfWidth}" height="${boardHeight}" fill="#fee2e2" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="4,4" class="cutplan-kerf-line" />
+          <text x="${curX + pw + kerfWidth / 2}" y="${boardHeight / 2}" class="cutplan-kerf-mark" font-size="${fsText}" font-weight="bold" fill="#dc2626" text-anchor="middle" dominant-baseline="middle">✂</text>
+        `;
+        curX += pw + kerfWidth;
+      } else {
+        curX += pw;
+      }
+    }
+
+    // 端材領域
+    if (sheet.remainingLengthMm > 0 && curX < boardWidth) {
+      const remWidth = boardWidth - curX;
+      svgInner += `
+        <rect x="${curX}" y="0" width="${remWidth}" height="${boardHeight}" fill="url(#scrap-hatch-${sheet.baseId})" stroke="#cbd5e1" stroke-width="1.5" rx="0" class="cutplan-remaining-block" />
+        <text x="${curX + remWidth / 2}" y="${boardHeight / 2}" class="cutplan-scrap-label" font-size="${fsText}" font-weight="600" fill="#64748b" text-anchor="middle" dominant-baseline="middle">端材 (${sheet.remainingLengthMm.toFixed(0)})</text>
+      `;
+    }
+
+    // 縦横外寸を描画
+    svgInner += ViewerUI.renderSvgDimensions(
+      boardWidth,
+      boardHeight,
+      `${totalLen.toFixed(0)}`,
+      `${actualThick}`,
+      scale,
+      false
+    );
+
+    const marginL = 70 * scale;
+    const marginT = 10 * scale;
+    const marginR = 20 * scale;
+    const marginB = 80 * scale;
+
+    return `
+      <svg viewBox="-${marginL} -${marginT} ${boardWidth + marginL + marginR} ${boardHeight + marginT + marginB}" class="cutplan-svg-canvas" preserveAspectRatio="xMidYMid meet">
         ${svgInner}
       </svg>
     `;
@@ -453,49 +741,15 @@ export class ViewerUI {
     header.className = 'cutplan-sheet-header';
     header.innerHTML = `
       <span><strong>材料 #${sheet.baseId + 1}</strong> (${sheet.lumberName || '角材'}) - 原木長: ${totalLen.toFixed(0)}mm</span>
-      <span>使用長: ${sheet.usedLengthMm.toFixed(0)}mm / 端材: ${sheet.remainingLengthMm.toFixed(0)}mm (歩留まり: ${sheet.yieldRatePercent.toFixed(1)}%)</span>
+      <span>使用長: ${sheet.usedLengthMm.toFixed(0)}mm / 端材: ${sheet.remainingLengthMm.toFixed(0)}mm <span class="cutplan-yield">(歩留まり: ${sheet.yieldRatePercent.toFixed(1)}%)</span></span>
     `;
 
-    const canvas = document.createElement('div');
-    canvas.className = 'cutplan-board-canvas';
-
-    for (let i = 0; i < sheet.items.length; i++) {
-      const item = sheet.items[i];
-      const block = document.createElement('div');
-      block.className = 'cutplan-part-block';
-      const widthPct = (item.lengthMm / totalLen) * 100;
-      block.style.width = `${Math.max(widthPct, 2)}%`;
-
-      const label = document.createElement('div');
-      label.className = 'cutplan-part-label';
-      label.textContent = `${item.object.partName || item.object.name} (${item.lengthMm.toFixed(0)}mm)`;
-      block.appendChild(label);
-
-      canvas.appendChild(block);
-
-      // パーツ同士の境界、または端材との境界に木取り線（のこ刃切り代）を表示
-      const isLast = i === sheet.items.length - 1;
-      if (!isLast || sheet.remainingLengthMm > 0) {
-        const kerf = document.createElement('div');
-        kerf.className = 'cutplan-kerf-line';
-        kerf.title = `木取り線 (切り代: ${sheet.cutWidthMm}mm)`;
-        kerf.innerHTML = '<span class="cutplan-kerf-mark">✂</span>';
-        canvas.appendChild(kerf);
-      }
-    }
-
-    if (sheet.remainingLengthMm > 0) {
-      const remaining = document.createElement('div');
-      remaining.className = 'cutplan-remaining-block';
-      const remPct = (sheet.remainingLengthMm / totalLen) * 100;
-      remaining.style.width = `${Math.max(remPct, 2)}%`;
-      remaining.style.flex = 'none';
-      remaining.textContent = `端材 (${sheet.remainingLengthMm.toFixed(0)}mm)`;
-      canvas.appendChild(remaining);
-    }
+    const main = document.createElement('div');
+    main.className = 'cutplan-canvas-main';
+    main.innerHTML = ViewerUI.render1DSheetSvg(sheet);
 
     sheetEl.appendChild(header);
-    sheetEl.appendChild(canvas);
+    sheetEl.appendChild(main);
     return sheetEl;
   }
 

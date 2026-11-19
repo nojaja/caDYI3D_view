@@ -6,10 +6,15 @@ test.describe('caDIY3D Web Viewer - 形状加工(edgeCuts)付き合板 3D描画 
     await page.waitForFunction(() => (window as any).__VIEWER_READY__ === true, { timeout: 10000 });
   });
 
-  test('3DビューでOSB合板モデルが正しくロードされ、インスペクタにエッジ加工情報が表示されること', async ({ page }) => {
-    // モデルタイトルが "002" または "OSB合板" であること
+  test('3DビューでOSB合板モデルが正しくロードされ、インスペクタにエッジ加工情報が表示されること', async ({ page, isMobile }) => {
+    // モデルタイトル（PC表示時のみ表示）
     const modelTitle = page.locator('#model-title');
-    await expect(modelTitle).toBeVisible();
+    if (isMobile) {
+      await expect(modelTitle).toBeHidden();
+      await page.locator('.layer-panel-title').click();
+    } else {
+      await expect(modelTitle).toBeVisible();
+    }
 
     // レイヤーツリーを展開してパーツ一覧から "OSB合板" をクリック
     const layerHeader = page.locator('.layer-item-header').first();

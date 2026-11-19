@@ -145,10 +145,52 @@ export class ModelBuilder {
   }
 
   private createBoxGeometry(obj: LumberObject | BoardObject): THREE.BufferGeometry {
+    let geometry: THREE.BufferGeometry;
     if (obj.edgeCuts && obj.edgeCuts.length > 0) {
-      return this.createCutBoxGeometry(obj);
+      geometry = this.createCutBoxGeometry(obj);
+    } else {
+      geometry = new THREE.BoxGeometry(obj.size.x, obj.size.y, obj.size.z);
     }
-    return new THREE.BoxGeometry(obj.size.x, obj.size.y, obj.size.z);
+
+    if (obj.cutAngles && obj.cutAngles.some((a) => a !== 0)) {
+      this.applyCutAngles(geometry, obj);
+    }
+
+    return geometry;
+  }
+
+  /**
+   * 木材の端面角度カット (cutAngles: マイター/ベベルカット) をジオメトリに適用
+   */
+  private applyCutAngles(geometry: THREE.BufferGeometry, obj: LumberObject | BoardObject): void {
+    const cuts = obj.cutAngles;
+    if (!cuts || !cuts.some((a) => a !== 0)) return;
+
+    // [0]: 始端(-Z)マイター(Y軸周り), [1]: 始端(-Z)ベベル(X軸周り)
+    // [2]: 終端(+Z)マイター(Y軸周り), [3]: 終端(+Z)ベベル(X軸周り)
+    const tanM1 = Math.tan(((cuts[0] || 0) * Math.PI) / 180);
+    const tanB1 = Math.tan(((cuts[1] || 0) * Math.PI) / 180);
+    const tanM2 = Math.tan(((cuts[2] || 0) * Math.PI) / 180);
+    const tanB2 = Math.tan(((cuts[3] || 0) * Math.PI) / 180);
+
+    const pos = geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const y = pos.getY(i);
+      const z = pos.getZ(i);
+
+      if (z < -1e-5) {
+        // 始端面 (-Z側)
+        const offsetZ = x * tanM1 + y * tanB1;
+        pos.setZ(i, z + offsetZ);
+      } else if (z > 1e-5) {
+        // 終端面 (+Z側)
+        const offsetZ = x * tanM2 + y * tanB2;
+        pos.setZ(i, z + offsetZ);
+      }
+    }
+    pos.needsUpdate = true;
+    geometry.computeVertexNormals();
   }
 
   /**
@@ -165,49 +207,118 @@ export class ModelBuilder {
     const cuts = obj.edgeCuts || [];
 
     // 縦エッジ (4, 5, 6, 7) のカットを検索
-    const cutMap = new Map<number, typeof cuts[0]>();
+    const cutMap = new Map<number, (typeof cuts)[0]>();
     for (const c of cuts) {
       cutMap.set(c.edgeIndex, c);
     }
 
     // X-Z 平面における2D輪郭頂点列 (反時計回り: 左下 -> 右下 -> 右上 -> 左上)
-    // 注意: caDIY3Dの立ち姿勢ではローカル -Z が上部(天面)、+Z が下部(床面)に対応する
-    const polygon2D: { x: number; z: number }[] = [];
+    // エッジ番号の幾何配置:
+    //   Edge 6: (X-, Z+) [左下]
+    //   Edge 4: (X+, Z+) [右下]
+    //   Edge 5: (X+, Z-) [右上]
+    //   Edge 7: (X-, Z-) [左上]
+    const rawPolygon2D: { x: number; z: number }[] = [];
 
-    // 1. 左下 (X-, Z+): Edge 5
-    if (cutMap.has(5)) {
-      const c = cutMap.get(5)!;
-      polygon2D.push({ x: -hx, z: hz - c.faceBDist });
-      polygon2D.push({ x: -hx + c.faceADist, z: hz });
+    // 1. 左下 (X-, Z+): Edge 6
+    if (cutMap.has(6)) {
+      const c = cutMap.get(6)!;
+      if (c.mode === 'round') {
+        const rA = c.faceADist > 0 ? c.faceADist : c.radius || 0.01;
+        const rB = c.faceBDist > 0 ? c.faceBDist : c.radius || 0.01;
+        const cx = -hx + rA;
+        const cz = hz - rB;
+        const segs = 6;
+        for (let s = 0; s <= segs; s++) {
+          const theta = Math.PI - (s / segs) * (Math.PI / 2);
+          rawPolygon2D.push({ x: cx + rA * Math.cos(theta), z: cz + rB * Math.sin(theta) });
+        }
+      } else {
+        rawPolygon2D.push({ x: -hx, z: hz - c.faceBDist });
+        rawPolygon2D.push({ x: -hx + c.faceADist, z: hz });
+      }
     } else {
-      polygon2D.push({ x: -hx, z: hz });
+      rawPolygon2D.push({ x: -hx, z: hz });
     }
 
     // 2. 右下 (X+, Z+): Edge 4
     if (cutMap.has(4)) {
       const c = cutMap.get(4)!;
-      polygon2D.push({ x: hx - c.faceADist, z: hz });
-      polygon2D.push({ x: hx, z: hz - c.faceBDist });
+      if (c.mode === 'round') {
+        const rA = c.faceADist > 0 ? c.faceADist : c.radius || 0.01;
+        const rB = c.faceBDist > 0 ? c.faceBDist : c.radius || 0.01;
+        const cx = hx - rA;
+        const cz = hz - rB;
+        const segs = 6;
+        for (let s = 0; s <= segs; s++) {
+          const theta = Math.PI / 2 - (s / segs) * (Math.PI / 2);
+          rawPolygon2D.push({ x: cx + rA * Math.cos(theta), z: cz + rB * Math.sin(theta) });
+        }
+      } else {
+        rawPolygon2D.push({ x: hx - c.faceADist, z: hz });
+        rawPolygon2D.push({ x: hx, z: hz - c.faceBDist });
+      }
     } else {
-      polygon2D.push({ x: hx, z: hz });
+      rawPolygon2D.push({ x: hx, z: hz });
     }
 
-    // 3. 右上 (X+, Z-): Edge 6
-    if (cutMap.has(6)) {
-      const c = cutMap.get(6)!;
-      polygon2D.push({ x: hx, z: -hz + c.faceBDist });
-      polygon2D.push({ x: hx - c.faceADist, z: -hz });
+    // 3. 右上 (X+, Z-): Edge 5
+    if (cutMap.has(5)) {
+      const c = cutMap.get(5)!;
+      if (c.mode === 'round') {
+        const rA = c.faceADist > 0 ? c.faceADist : c.radius || 0.01;
+        const rB = c.faceBDist > 0 ? c.faceBDist : c.radius || 0.01;
+        const cx = hx - rA;
+        const cz = -hz + rB;
+        const segs = 6;
+        for (let s = 0; s <= segs; s++) {
+          const theta = 0 - (s / segs) * (Math.PI / 2);
+          rawPolygon2D.push({ x: cx + rA * Math.cos(theta), z: cz + rB * Math.sin(theta) });
+        }
+      } else {
+        rawPolygon2D.push({ x: hx, z: -hz + c.faceBDist });
+        rawPolygon2D.push({ x: hx - c.faceADist, z: -hz });
+      }
     } else {
-      polygon2D.push({ x: hx, z: -hz });
+      rawPolygon2D.push({ x: hx, z: -hz });
     }
 
     // 4. 左上 (X-, Z-): Edge 7
     if (cutMap.has(7)) {
       const c = cutMap.get(7)!;
-      polygon2D.push({ x: -hx + c.faceADist, z: -hz });
-      polygon2D.push({ x: -hx, z: -hz + c.faceBDist });
+      if (c.mode === 'round') {
+        const rA = c.faceADist > 0 ? c.faceADist : c.radius || 0.01;
+        const rB = c.faceBDist > 0 ? c.faceBDist : c.radius || 0.01;
+        const cx = -hx + rA;
+        const cz = -hz + rB;
+        const segs = 6;
+        for (let s = 0; s <= segs; s++) {
+          const theta = 1.5 * Math.PI - (s / segs) * (Math.PI / 2);
+          rawPolygon2D.push({ x: cx + rA * Math.cos(theta), z: cz + rB * Math.sin(theta) });
+        }
+      } else {
+        rawPolygon2D.push({ x: -hx + c.faceADist, z: -hz });
+        rawPolygon2D.push({ x: -hx, z: -hz + c.faceBDist });
+      }
     } else {
-      polygon2D.push({ x: -hx, z: -hz });
+      rawPolygon2D.push({ x: -hx, z: -hz });
+    }
+
+    // 重複頂点の除去（全幅カットや全周カット時の退化ポリゴン防止）
+    const polygon2D: { x: number; z: number }[] = [];
+    for (let i = 0; i < rawPolygon2D.length; i++) {
+      const p = rawPolygon2D[i];
+      const prev = polygon2D[polygon2D.length - 1];
+      if (!prev || Math.hypot(p.x - prev.x, p.z - prev.z) > 1e-5) {
+        polygon2D.push(p);
+      }
+    }
+    if (polygon2D.length > 2) {
+      const first = polygon2D[0];
+      const last = polygon2D[polygon2D.length - 1];
+      if (Math.hypot(first.x - last.x, first.z - last.z) < 1e-5) {
+        polygon2D.pop();
+      }
     }
 
     const N = polygon2D.length;

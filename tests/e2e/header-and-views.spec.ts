@@ -6,7 +6,8 @@ test.describe('caDIY3D Web Viewer - ヘッダ・表示モード・レイヤー�
     await page.waitForFunction(() => (window as any).__VIEWER_READY__ === true, { timeout: 10000 });
   });
 
-  test('ヘッダ領域のレイアウトと要素が要件通り配置されていること', async ({ page }) => {
+  test('ヘッダ領域のレイアウトと要素が要件通り配置されていること', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'PC表示専用のテスト（スマホ表示ではブランド名等は非表示）');
     // 1. 左側: brand-title
     const brandTitle = page.locator('.brand-title');
     await expect(brandTitle).toBeVisible();
@@ -60,9 +61,14 @@ test.describe('caDIY3D Web Viewer - ヘッダ・表示モード・レイヤー�
     await expect(mode3d).toHaveClass(/active/);
   });
 
-  test('画面左側にレイヤー一覧が表示され、開閉と表示ON/OFFができること', async ({ page }) => {
+  test('画面左側にレイヤー一覧が表示され、開閉と表示ON/OFFができること', async ({ page, isMobile }) => {
     const layerPanel = page.locator('#layer-panel');
     await expect(layerPanel).toBeVisible();
+
+    // モバイル環境では初期状態で折りたたまれているため、開いてから検証
+    if (isMobile) {
+      await page.locator('.layer-panel-title').click();
+    }
 
     // 画面左側に配置されていることの検証 (left が設定されている)
     const box = await layerPanel.boundingBox();
@@ -89,7 +95,11 @@ test.describe('caDIY3D Web Viewer - ヘッダ・表示モード・レイヤー�
     await expect(visibilityBtn).toBeVisible();
   });
 
-  test('オブジェクト選択時に画面右側に詳細ビュー(インスペクタ)が表示され、プロパティが網羅されていること', async ({ page }) => {
+  test('オブジェクト選択時に画面右側に詳細ビュー(インスペクタ)が表示され、プロパティが網羅されていること', async ({ page, isMobile }) => {
+    // モバイル環境では初期状態でレイヤー一覧が折りたたまれているため、開く
+    if (isMobile) {
+      await page.locator('.layer-panel-title').click();
+    }
     // レイヤーを展開
     const layerHeader = page.locator('.layer-item-header').first();
     await layerHeader.click();

@@ -15,10 +15,12 @@
   - **長さ・座標**: メートル (m)（※木取り図や一部UI表示のみ mm）
   - **角度**: 度数法 (deg) および 四元数 (Quaternion)
   - **色**: 正規化浮動小数点数 `0.0` 〜 `1.0`（RGB / RGBA）
-  - **座標軸**:
+  - **座標軸**: **完全な右手系 (Right-handed System, OpenGL/Three.js準拠)**
     - `+Y`: 上方向 (Up) / 床面は `y = 0`
     - `+Z`: 正面手前方向 (Front)
     - `+X`: 右方向 (Right)
+    - 外積関係: $\vec{X} \times \vec{Y} = \vec{Z}$ (右ねじの法則に従い正の角度は反時計回り)
+    - 詳細解説: [coordinate-and-cut-specs.md](./coordinate-and-cut-specs.md)
 
 ---
 
@@ -91,7 +93,10 @@
 
 #### 1. `lumber` (角材) / `board` (板材)
 木工の基本材料です。木取り図（Cut Plan）の計算対象になります。
-- `cutAngles`: 8要素の配列 `[0, 0, 0, 0, 0, 0, 0, 0]`（端部の斜めカット角度 [deg]）。
+- `cutAngles`: 8要素の配列 `[c0, c1, c2, c3, c4, c5, c6, c7]`（端部および端縁の斜めカット角度 [deg]）。
+  - 角材（lumber）: `[0]`=始端(-Z)マイター(Y軸周り), `[1]`=始端(-Z)ベベル(X軸周り), `[2]`=終端(+Z)マイター(Y軸周り), `[3]`=終端(+Z)ベベル(X軸周り)。
+  - 板材（board）: `[4..7]`=外周4辺（妻壁・屋根勾配等）の傾斜カット角。
+  - 詳細は [coordinate-and-cut-specs.md](./coordinate-and-cut-specs.md) を参照。
 - `edgeCuts`: 形状加工（角の斜めカット・面取り・R加工）の定義配列（後述）。
 - `standardRef`: 材料規格参照オブジェクト（`setId`, `standardId`, `name`, `snapshotAt`）。
 - `unitPrice`: 原木単価（円）。
@@ -111,11 +116,13 @@
 ```
 | フィールド名 | 型 | 説明 |
 | :--- | :--- | :--- |
-| `edgeIndex` | `integer` | 加工対象となるバウンディングボックスの辺番号（`0` 〜 `11`）。 |
+| `edgeIndex` | `integer` | 加工対象となるバウンディングボックスの辺番号（`0` 〜 `11`）。<br>・`0..3`: 底面4辺（Y-側）<br>・`4..7`: 垂直4辺（Y軸平行。4: 手前右 X+Z+, 5: 奥右 X+Z-, 6: 手前左 X-Z+, 7: 奥左 X-Z-。板材のコーナー加工に使用）<br>・`8..11`: 上面4辺（Y+側） |
 | `mode` | `string` | 加工モード。`"cut"`（直線斜めカット/面取り）または `"round"`（R面取り/フィレット）。 |
-| `faceADist` | `number` | エッジに隣接する面A方向に沿った切り落とし距離 [m]。 |
-| `faceBDist` | `number` | エッジに隣接する面B方向に沿った切り落とし距離 [m]。 |
+| `faceADist` | `number` | エッジに隣接する面A（板材の場合はローカル $X$ 軸/幅方向）に沿った切り落とし距離 [m]。 |
+| `faceBDist` | `number` | エッジに隣接する面B（板材の場合はローカル $Z$ 軸/長さ方向）に沿った切り落とし距離 [m]。 |
 | `radius` | `number` | オプション。R面取り（フィレット）時の曲率半径 [m]。 |
+
+※ 幾何配置や実データ検証の詳細は [coordinate-and-cut-specs.md](./coordinate-and-cut-specs.md) を参照してください。
 
 #### 2. `cylinder` (円柱・丸棒) / `roundBoard` (円形板)
 丸棒や丸板の材料です。

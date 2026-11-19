@@ -188,14 +188,14 @@
     },
     "EdgeCut": {
       "type": "object",
-      "description": "Edge chamfer / corner cut processing definition for lumber and board (形状加工).",
+      "description": "Edge chamfer / corner cut processing definition for lumber and board (形状加工). EdgeIndex specifies one of the 12 bounding box edges (0..11). Vertical edges 4..7 correspond to corner cuts on boards: 4=(X+, Z+), 5=(X+, Z-), 6=(X-, Z+), 7=(X-, Z-).",
       "required": ["edgeIndex", "mode", "faceADist", "faceBDist"],
       "properties": {
         "edgeIndex": {
           "type": "integer",
           "minimum": 0,
           "maximum": 11,
-          "description": "0-based edge index (0..11) of the bounding box/part to apply cut processing."
+          "description": "0-based edge index (0..11) of the bounding box/part to apply cut processing: 0..3=bottom edges (Y-), 4..7=vertical edges (parallel to Y, 4:X+Z+, 5:X+Z-, 6:X-Z+, 7:X-Z-), 8..11=top edges (Y+)."
         },
         "mode": {
           "type": "string",
@@ -205,12 +205,12 @@
         "faceADist": {
           "type": "number",
           "minimum": 0,
-          "description": "Cut offset distance in meters along the adjacent face A."
+          "description": "Cut offset distance in meters along the adjacent face A (for boards: along local X axis / width direction)."
         },
         "faceBDist": {
           "type": "number",
           "minimum": 0,
-          "description": "Cut offset distance in meters along the adjacent face B."
+          "description": "Cut offset distance in meters along the adjacent face B (for boards: along local Z axis / length direction)."
         },
         "radius": {
           "type": "number",
@@ -527,7 +527,7 @@
         },
         "cutAngles": {
           "type": "array",
-          "description": "8 cut angle values in degrees [0..7] for miters/bevels on ends.",
+          "description": "8 cut angle values in degrees [0..7] for miters/bevels/slopes on ends and edges. For lumber: [0]=start miter (around Y), [1]=start bevel (around X), [2]=end miter (around Y), [3]=end bevel (around X). For board: [4..7]=edge bevel/slopes on outer perimeter edges.",
           "items": { "type": "number" },
           "minItems": 8,
           "maxItems": 8

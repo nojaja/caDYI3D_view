@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (modelUrl) {
     ui.loadFromUrl(modelUrl);
   } else {
-    // デフォルトで models/test_rack.cadiy4 をロード
-    ui.loadFromUrl('models/test_rack.cadiy4');
+    // デフォルトで models/001_tana.cadiy4 をロード
+    ui.loadFromUrl('models/001_tana.cadiy4');
   }
 });

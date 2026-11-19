@@ -402,4 +402,160 @@ describe('ModelBuilder', () => {
       expect((mesh.material as any).wireframe).toBe(true);
     }
   });
+
+  it('合板のコーナーR加工 (edgeCuts mode: "round") で円弧状のフィレット頂点群が生成されること', () => {
+    const builder = new ModelBuilder();
+    const boardWithRound = {
+      id: 'round-board-1',
+      name: 'R加工天板',
+      type: 'board' as const,
+      size: { x: 0.4, y: 0.02, z: 0.6 },
+      position: { x: 0, y: 0, z: 0 },
+      quaternion: { x: 0, y: 0, z: 0, w: 1 },
+      color: { r: 0.9, g: 0.8, b: 0.6 },
+      visible: true,
+      edgeCuts: [
+        {
+          edgeIndex: 4, // 手前右 (X+, Z+)
+          mode: 'round' as const,
+          faceADist: 0.05,
+          faceBDist: 0.05,
+          radius: 0.05
+        }
+      ]
+    };
+
+    const group = builder.build([boardWithRound]);
+    const mesh = group.children[0] as THREE.Mesh;
+    expect(mesh).toBeDefined();
+
+    const geometry = mesh.geometry;
+    const posAttr = geometry.attributes.position;
+
+    // 単なる2頂点の直線カット (頂点数 5 * 2 = 10) ではなく、
+    // 円弧分割によって上面・下面それぞれ 5 頂点より多くの頂点が生成されていること
+    const vertexCount = posAttr.count;
+    expect(vertexCount).toBeGreaterThan(12);
+
+    // 生成された頂点が、コーナーの中心 (0.15, 0.25) から半径 0.05 の円弧上にあること
+    // X+ = 0.2, Z+ = 0.3 なので、中心は (0.15, 0.25)
+    const arcCenter = { x: 0.2 - 0.05, z: 0.3 - 0.05 };
+    const topVertices: { x: number; z: number }[] = [];
+    for (let i = 0; i < posAttr.count; i++) {
+      if (posAttr.getY(i) > 0) {
+        topVertices.push({ x: posAttr.getX(i), z: posAttr.getZ(i) });
+      }
+    }
+
+    // 手前右コーナー付近の頂点群を取り出し、中心からの距離が radius (0.05) に近いことを検証
+    const cornerVertices = topVertices.filter(v => v.x >= arcCenter.x - 0.001 && v.z >= arcCenter.z - 0.001);
+    expect(cornerVertices.length).toBeGreaterThanOrEqual(3);
+    for (const v of cornerVertices) {
+      const dist = Math.hypot(v.x - arcCenter.x, v.z - arcCenter.z);
+      expect(dist).toBeCloseTo(0.05, 3);
+    }
+  });
+
+  it('角材の角度カット (cutAngles) で傾斜端面を持つジオメトリが生成されること', () => {
+    const builder = new ModelBuilder();
+
+    // 垂木: 始端(-Z) 45度ベベルカット, 終端(+Z) -45度ベベルカット
+    const rafterObj = {
+      id: 'rafter-1',
+      name: 'SPF 2x4 垂木',
+      type: 'lumber' as const,
+      size: { x: 0.089, y: 0.038, z: 1.0 },
+      position: { x: 0, y: 0, z: 0 },
+      quaternion: { x: 0, y: 0, z: 0, w: 1 },
+      color: { r: 0.8, g: 0.6, b: 0.4 },
+      visible: true,
+      cutAngles: [0, 45, 0, -45, 0, 0, 0, 0]
+    };
+
+    const group = builder.build([rafterObj]);
+    const mesh = group.children[0] as THREE.Mesh;
+    expect(mesh).toBeDefined();
+
+    const geometry = mesh.geometry;
+    const posAttr = geometry.attributes.position;
+
+    // 単なる直角平行六面体 (全頂点の Z が ±0.5) ではなく、
+    // Y (厚み) 方向によって Z 座標が傾斜していること
+    const zValues: number[] = [];
+    for (let i = 0; i < posAttr.count; i++) {
+      zValues.push(posAttr.getZ(i));
+    }
+
+    // 始端 (-Z側): Yによって Z 座標が変化していること
+    const minZ = Math.min(...zValues);
+    const maxZ = Math.max(...zValues);
+
+    // 45度カットにより、厚み 0.038m に対する Z 方向のズレは約 0.038m 存在する
+    expect(maxZ - minZ).toBeGreaterThan(1.0);
+  });
+
+  it('001_tana.cadiy4 の側板 (edgeIndex: 6) が上部で斜めカットされ、底板 (edgeIndex: 6, 7) の手前側が角丸になること', () => {
+    const filePath = path.resolve(__dirname, '../../testdata/001_tana.cadiy4');
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const parser = new Cadiy4Parser();
+    const data = parser.parse(content);
+
+    const builder = new ModelBuilder();
+    const group = builder.build(data.objects);
+
+    // 1. 側板(左) の検証 (partName: 側板 (左))
+    const sideLObj = data.objects.find(o => o.partName?.includes('側板 (左)'))!;
+    expect(sideLObj).toBeDefined();
+    const sideLMesh = group.children.find(c => (c.userData.cadiyObject as any)?.id === sideLObj.id) as THREE.Mesh;
+    expect(sideLMesh).toBeDefined();
+
+    sideLMesh.updateMatrixWorld();
+    const posAttr = sideLMesh.geometry.attributes.position;
+    const worldVerts: THREE.Vector3[] = [];
+    for (let i = 0; i < posAttr.count; i++) {
+      const v = new THREE.Vector3().fromBufferAttribute(posAttr, i);
+      v.applyMatrix4(sideLMesh.matrixWorld);
+      worldVerts.push(v);
+    }
+
+    // 側板の上端 (Y > 0.4m):
+    // 奥側 (Z < 0) は高く (約 0.468m)、手前側 (Z > -0.01) は斜めカットにより低くなっている (約 0.444m)
+    const topVerts = worldVerts.filter(v => v.y > 0.4);
+    const topMaxY = Math.max(...topVerts.map(v => v.y));
+    const topMinY = Math.min(...topVerts.map(v => v.y));
+    expect(topMaxY).toBeCloseTo(0.468, 2);
+    expect(topMinY).toBeCloseTo(0.444, 2);
+
+    // 側板の下端 (Y < 0.05m): 床側は平ら（直角）であり、すべての頂点 Y が 0.018m 付近であること
+    const bottomVerts = worldVerts.filter(v => v.y < 0.05);
+    const bottomMaxY = Math.max(...bottomVerts.map(v => v.y));
+    const bottomMinY = Math.min(...bottomVerts.map(v => v.y));
+    expect(bottomMaxY - bottomMinY).toBeCloseTo(0, 3);
+
+    // 2. 底板 (パイン集成材 18mm, edgeIndex: 6, 7) の検証
+    const bottomObj = data.objects.find(o => o.name === 'パイン集成材 18mm' && o.partName === undefined)!;
+    expect(bottomObj).toBeDefined();
+    const bottomMesh = group.children.find(c => (c.userData.cadiyObject as any)?.id === bottomObj.id) as THREE.Mesh;
+    expect(bottomMesh).toBeDefined();
+
+    bottomMesh.updateMatrixWorld();
+    const bottomPos = bottomMesh.geometry.attributes.position;
+    const bWorldVerts: THREE.Vector3[] = [];
+    for (let i = 0; i < bottomPos.count; i++) {
+      const v = new THREE.Vector3().fromBufferAttribute(bottomPos, i);
+      v.applyMatrix4(bottomMesh.matrixWorld);
+      bWorldVerts.push(v);
+    }
+
+    // 底板の手前側 (最手前 Z ≈ 0.06m) の左右の端が角丸により切り落とされ、手前の最先端幅が中央部 (0.4m) より狭まっていること
+    const frontVerts = bWorldVerts.filter(v => v.z > 0.0599);
+    const frontWidth = Math.max(...frontVerts.map(v => v.x)) - Math.min(...frontVerts.map(v => v.x));
+    // R20mm加工により、最手前 (Z = 0.06m) の幅は 0.36m (0.4m - 2*0.02m)
+    expect(frontWidth).toBeCloseTo(0.36, 2);
+
+    // 奥側 (Z < -0.059m) は直角のままで全幅 0.4m であること
+    const backVerts = bWorldVerts.filter(v => v.z < -0.059);
+    const backWidth = Math.max(...backVerts.map(v => v.x)) - Math.min(...backVerts.map(v => v.x));
+    expect(backWidth).toBeCloseTo(0.40, 2);
+  });
 });

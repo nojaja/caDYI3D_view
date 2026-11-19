@@ -6,9 +6,13 @@ test.describe('caDIY3D Web Viewer - サブフォルダを含むn段階層ツリ�
     await page.waitForFunction(() => (window as any).__VIEWER_READY__ === true, { timeout: 10000 });
   });
 
-  test('ファイル読み込み後の初期表示時、レイヤーツリーがすべて閉じていること', async ({ page }) => {
+  test('ファイル読み込み後の初期表示時、レイヤーツリーがすべて閉じていること', async ({ page, isMobile }) => {
     const layerPanel = page.locator('#layer-panel');
     await expect(layerPanel).toBeVisible();
+
+    if (isMobile) {
+      await page.locator('.layer-panel-title').click();
+    }
 
     // トップレベルのレイヤーアイテム（建物ルート、独立ルートフォルダ）が存在すること
     const topLevelItems = page.locator('.layer-tree-container > .layer-item');
@@ -23,7 +27,10 @@ test.describe('caDIY3D Web Viewer - サブフォルダを含むn段階層ツリ�
     await expect(toggleIcons.first()).toHaveText('▶');
   });
 
-  test('親レイヤーをクリックして展開すると、サブフォルダを含むn段の階層ツリーが表示されること', async ({ page }) => {
+  test('親レイヤーをクリックして展開すると、サブフォルダを含むn段の階層ツリーが表示されること', async ({ page, isMobile }) => {
+    if (isMobile) {
+      await page.locator('.layer-panel-title').click();
+    }
     // 1. トップレベル「建物ルート」のヘッダーをクリックして展開
     const rootHeader = page.locator('.layer-item[data-layer-id="0"] > .layer-item-header');
     await rootHeader.click();
@@ -83,7 +90,10 @@ test.describe('caDIY3D Web Viewer - サブフォルダを含むn段階層ツリ�
     expect(objectVisibilities['obj-direct-hidden']).toBe(false);
   });
 
-  test('レイヤーの可視性トグルをOFFにすると、配下のオブジェクトが連動して非表示になること', async ({ page }) => {
+  test('レイヤーの可視性トグルをOFFにすると、配下のオブジェクトが連動して非表示になること', async ({ page, isMobile }) => {
+    if (isMobile) {
+      await page.locator('.layer-panel-title').click();
+    }
     // 建物ルート(0)を展開
     const rootHeader = page.locator('.layer-item[data-layer-id="0"] > .layer-item-header');
     await rootHeader.click();
