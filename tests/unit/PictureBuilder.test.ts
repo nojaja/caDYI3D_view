@@ -60,12 +60,12 @@ describe('PictureBuilder - 画像オブジェクト(picture)の生成', () => {
     const { LegacyCadiyParser } = await import('../../src/loader/LegacyCadiyParser');
     const { LegacyToV4Converter } = await import('../../src/loader/LegacyToV4Converter');
 
-    const filePath = path.resolve(__dirname, '../../testdata/重箱式巣箱.cadiy');
+    const filePath = path.resolve(__dirname, '../data/picture_test.cadiy');
     const content = fs.readFileSync(filePath, 'utf-8');
     const legacyParser = new LegacyCadiyParser();
     const legacyProject = legacyParser.parse(content);
     const converter = new LegacyToV4Converter();
-    const data = converter.convert(legacyProject, '重箱式巣箱');
+    const data = converter.convert(legacyProject, '画像テスト');
 
     // 1. pictureImageTable の検証
     expect(data.pictureImageTable).toBeDefined();
