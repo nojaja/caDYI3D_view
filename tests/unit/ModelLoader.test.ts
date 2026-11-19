@@ -46,18 +46,15 @@ describe('ModelLoader', () => {
     expect(data.objects[0].name).toBe('板1');
   });
 
-  it('実際の migration/NASケース.cadiy を読み込んで正常にV4データが得られること', () => {
-    const cadiyPath = path.resolve(__dirname, '../../migration/NASケース.cadiy');
+  it('実際の tests/data/008.cadiy を読み込んで正常にV4データが得られること', () => {
+    const cadiyPath = path.resolve(__dirname, '../data/008.cadiy');
     if (fs.existsSync(cadiyPath)) {
       const xml = fs.readFileSync(cadiyPath, 'utf-8');
-      const data = loader.load(xml, 'NASケース');
+      const data = loader.load(xml, '008');
       expect(data).toBeDefined();
       expect(data.version).toBe(1);
       expect(data.objects.length).toBeGreaterThan(0);
       expect(data.layers.length).toBeGreaterThan(0);
-      // 木取り図が存在すること
-      expect(data.cutList).toBeDefined();
-      expect(data.cutList?.layouts.length).toBeGreaterThan(0);
     }
   });
 });

@@ -1,0 +1,2693 @@
+{
+    "version": 1,
+    "thumbnail": "data:image/webp;base64,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",
+    "camera": {
+        "position": {
+            "x": -0.3670009570046491,
+            "y": 0.61668419173016,
+            "z": 6.533750637861313
+        },
+        "target": {
+            "x": 0.646448398599224,
+            "y": 0.5921743765743038,
+            "z": 0.275
+        },
+        "isOrthographic": true,
+        "orthoFace": "front",
+        "zoom": 1.5333334715805853,
+        "orthoFrustum": {
+            "left": -2.0155695332137378,
+            "right": 2.0155695332137378,
+            "top": 1.1179692344225531,
+            "bottom": -1.1179692344225531
+        }
+    },
+    "objects": [
+        {
+            "id": "2f6c7825-75a7-4463-ac55-961c0a33856e",
+            "name": "円柱",
+            "position": {
+                "x": 0.056,
+                "y": 0.020000000000000004,
+                "z": 0.505
+            },
+            "quaternion": {
+                "x": -0.7071067811865475,
+                "y": 0,
+                "z": 0,
+                "w": 0.7071067811865476
+            },
+            "size": {
+                "x": 0.04,
+                "y": 0.04,
+                "z": 0.04
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 3,
+            "color": {
+                "r": 0.2,
+                "g": 0.2,
+                "b": 0.2
+            },
+            "textureId": 2,
+            "dummy": true,
+            "displayId": 45,
+            "partName": "アジャスター(左前)",
+            "type": "cylinder"
+        },
+        {
+            "id": "41d6cc03-a91c-48ef-8dde-2238ebc22f75",
+            "name": "円柱",
+            "position": {
+                "x": 0.056,
+                "y": 0.020000000000000004,
+                "z": 0.056
+            },
+            "quaternion": {
+                "x": -0.7071067811865475,
+                "y": 0,
+                "z": 0,
+                "w": 0.7071067811865476
+            },
+            "size": {
+                "x": 0.04,
+                "y": 0.04,
+                "z": 0.04
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 3,
+            "color": {
+                "r": 0.2,
+                "g": 0.2,
+                "b": 0.2
+            },
+            "textureId": 2,
+            "dummy": true,
+            "displayId": 46,
+            "partName": "アジャスター(左奥)",
+            "type": "cylinder"
+        },
+        {
+            "id": "8ed45bf8-6867-41ea-88d2-6863f4ea301e",
+            "name": "円柱",
+            "position": {
+                "x": 0.6,
+                "y": 0.020000000000000004,
+                "z": 0.505
+            },
+            "quaternion": {
+                "x": -0.7071067811865475,
+                "y": 0,
+                "z": 0,
+                "w": 0.7071067811865476
+            },
+            "size": {
+                "x": 0.04,
+                "y": 0.04,
+                "z": 0.04
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 3,
+            "color": {
+                "r": 0.2,
+                "g": 0.2,
+                "b": 0.2
+            },
+            "textureId": 2,
+            "dummy": true,
+            "displayId": 47,
+            "partName": "アジャスター(中央前)",
+            "type": "cylinder"
+        },
+        {
+            "id": "1c92241f-8708-42c6-95be-f127b82a68d6",
+            "name": "円柱",
+            "position": {
+                "x": 0.6,
+                "y": 0.020000000000000004,
+                "z": 0.056
+            },
+            "quaternion": {
+                "x": -0.7071067811865475,
+                "y": 0,
+                "z": 0,
+                "w": 0.7071067811865476
+            },
+            "size": {
+                "x": 0.04,
+                "y": 0.04,
+                "z": 0.04
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 3,
+            "color": {
+                "r": 0.2,
+                "g": 0.2,
+                "b": 0.2
+            },
+            "textureId": 2,
+            "dummy": true,
+            "displayId": 48,
+            "partName": "アジャスター(中央奥)",
+            "type": "cylinder"
+        },
+        {
+            "id": "cd1ee8da-1521-4422-9298-21230b7c4453",
+            "name": "円柱",
+            "position": {
+                "x": 1.144,
+                "y": 0.020000000000000004,
+                "z": 0.505
+            },
+            "quaternion": {
+                "x": -0.7071067811865475,
+                "y": 0,
+                "z": 0,
+                "w": 0.7071067811865476
+            },
+            "size": {
+                "x": 0.04,
+                "y": 0.04,
+                "z": 0.04
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 3,
+            "color": {
+                "r": 0.2,
+                "g": 0.2,
+                "b": 0.2
+            },
+            "textureId": 2,
+            "dummy": true,
+            "displayId": 49,
+            "partName": "アジャスター(右前)",
+            "type": "cylinder"
+        },
+        {
+            "id": "60cccd19-637d-4e06-b3fb-9a3decc591ab",
+            "name": "円柱",
+            "position": {
+                "x": 1.144,
+                "y": 0.020000000000000004,
+                "z": 0.056
+            },
+            "quaternion": {
+                "x": -0.7071067811865475,
+                "y": 0,
+                "z": 0,
+                "w": 0.7071067811865476
+            },
+            "size": {
+                "x": 0.04,
+                "y": 0.04,
+                "z": 0.04
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 3,
+            "color": {
+                "r": 0.2,
+                "g": 0.2,
+                "b": 0.2
+            },
+            "textureId": 2,
+            "dummy": true,
+            "displayId": 50,
+            "partName": "アジャスター(右奥)",
+            "type": "cylinder"
+        },
+        {
+            "id": "57599472-974c-4fd5-b573-bc5409225b3d",
+            "name": "板材",
+            "position": {
+                "x": 0.216,
+                "y": 0.9590000000000001,
+                "z": 0.30300000000000005
+            },
+            "quaternion": {
+                "x": -0.7071067811865475,
+                "y": 0,
+                "z": 0,
+                "w": 0.7071067811865476
+            },
+            "size": {
+                "x": 0.392,
+                "y": 0.406,
+                "z": 0.478
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 3,
+            "color": {
+                "r": 0.45,
+                "g": 0.45,
+                "b": 0.45
+            },
+            "textureId": 2,
+            "dummy": true,
+            "displayId": 51,
+            "partName": "[参考] Bambu Lab X2D (392x406x478)",
+            "type": "board",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        {
+            "id": "0f1b12ec-8bb1-4663-b0c1-9ce4d7c139be",
+            "name": "板材",
+            "position": {
+                "x": 0.621,
+                "y": 0.833,
+                "z": 0.29000000000000004
+            },
+            "quaternion": {
+                "x": -0.7071067811865475,
+                "y": 0,
+                "z": 0,
+                "w": 0.7071067811865476
+            },
+            "size": {
+                "x": 0.372,
+                "y": 0.28,
+                "z": 0.226
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 3,
+            "color": {
+                "r": 0.75,
+                "g": 0.75,
+                "b": 0.75
+            },
+            "textureId": 2,
+            "dummy": true,
+            "displayId": 52,
+            "partName": "[参考] AMS 2 Pro (372x280x226)",
+            "type": "board",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        {
+            "id": "de956772-37bb-42c9-907f-45a818b92b93",
+            "name": "板材",
+            "position": {
+                "x": 1.004,
+                "y": 0.969,
+                "z": 0.29700000000000004
+            },
+            "quaternion": {
+                "x": -0.7071067811865475,
+                "y": 0,
+                "z": 0,
+                "w": 0.7071067811865476
+            },
+            "size": {
+                "x": 0.358,
+                "y": 0.374,
+                "z": 0.498
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 3,
+            "color": {
+                "r": 0.25,
+                "g": 0.55,
+                "b": 0.35
+            },
+            "textureId": 2,
+            "dummy": true,
+            "displayId": 53,
+            "partName": "[参考] Creality Ender-3 V3 (358x374x498)",
+            "type": "board",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ]
+        },
+        {
+            "id": "1b182f9f-1b9b-4a79-a89e-b66da216e6ca",
+            "name": "寸法線",
+            "position": {
+                "x": 0.6,
+                "y": 0.72,
+                "z": 0.55
+            },
+            "quaternion": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5,
+                "w": 0.5
+            },
+            "size": {
+                "x": 0.24,
+                "y": 0,
+                "z": 1.2
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 3,
+            "color": {
+                "r": 0.2,
+                "g": 0.2,
+                "b": 0.2
+            },
+            "textureId": 0,
+            "displayId": 54,
+            "type": "dimension",
+            "linePattern": 0,
+            "auxLinePattern": 0,
+            "lineWidth": 1.5,
+            "arrowType": "inside",
+            "textVisible": true,
+            "valuePosition": "top",
+            "symbol": "",
+            "fontSize": 24,
+            "billboard": false
+        },
+        {
+            "id": "51c5a801-db3f-4b5a-83d7-9fc963fdf4d3",
+            "name": "寸法線",
+            "position": {
+                "x": 1.2,
+                "y": 0.36,
+                "z": 0.55
+            },
+            "quaternion": {
+                "x": 0.7071067811865476,
+                "y": 0,
+                "z": 0,
+                "w": 0.7071067811865474
+            },
+            "size": {
+                "x": 0.2,
+                "y": 0,
+                "z": 0.72
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 3,
+            "color": {
+                "r": 0.2,
+                "g": 0.2,
+                "b": 0.2
+            },
+            "textureId": 0,
+            "displayId": 55,
+            "type": "dimension",
+            "linePattern": 0,
+            "auxLinePattern": 0,
+            "lineWidth": 1.5,
+            "arrowType": "inside",
+            "textVisible": true,
+            "valuePosition": "top",
+            "symbol": "",
+            "fontSize": 24,
+            "billboard": false
+        },
+        {
+            "id": "1c359574-c364-41b9-bb15-53d045d8db15",
+            "name": "寸法線",
+            "position": {
+                "x": 1.2,
+                "y": 0,
+                "z": 0.275
+            },
+            "quaternion": {
+                "x": 0,
+                "y": 0,
+                "z": 0,
+                "w": 1
+            },
+            "size": {
+                "x": 0.2,
+                "y": 0,
+                "z": 0.55
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 3,
+            "color": {
+                "r": 0.2,
+                "g": 0.2,
+                "b": 0.2
+            },
+            "textureId": 0,
+            "displayId": 56,
+            "type": "dimension",
+            "linePattern": 0,
+            "auxLinePattern": 0,
+            "lineWidth": 1.5,
+            "arrowType": "inside",
+            "textVisible": true,
+            "valuePosition": "top",
+            "symbol": "",
+            "fontSize": 24,
+            "billboard": false
+        },
+        {
+            "id": "0a8ea36f-495b-44fd-bba6-e0acaf69ac10",
+            "name": "SPF 2x4材",
+            "position": {
+                "x": 0.031,
+                "y": 0.371,
+                "z": 0.5055000000000001
+            },
+            "quaternion": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5,
+                "w": -0.5
+            },
+            "size": {
+                "x": 0.089,
+                "y": 0.038,
+                "z": 0.662
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 154,
+            "partName": "左前柱(2x4)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x4.6f",
+                "name": "SPF 2x4材",
+                "snapshotAt": "2026-11-14T17:36:26.075Z"
+            },
+            "unitPrice": 548,
+            "specificGravity": 0.4,
+            "remarks": "89×38×1820mm (6F) 定番 (cainz.com確認)"
+        },
+        {
+            "id": "87f86482-61e2-41cd-89f8-eb07323102e7",
+            "name": "SPF 2x4材",
+            "position": {
+                "x": 0.031,
+                "y": 0.371,
+                "z": 0.056499999999999995
+            },
+            "quaternion": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5,
+                "w": -0.5
+            },
+            "size": {
+                "x": 0.089,
+                "y": 0.038,
+                "z": 0.662
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 155,
+            "partName": "左奥柱(2x4)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x4.6f",
+                "name": "SPF 2x4材",
+                "snapshotAt": "2026-11-14T17:36:26.075Z"
+            },
+            "unitPrice": 548,
+            "specificGravity": 0.4,
+            "remarks": "89×38×1820mm (6F) 定番 (cainz.com確認)"
+        },
+        {
+            "id": "ee139f16-3678-4f1e-8735-9b9e287310ec",
+            "name": "SPF 2x4材",
+            "position": {
+                "x": 0.6,
+                "y": 0.371,
+                "z": 0.5055000000000001
+            },
+            "quaternion": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5,
+                "w": -0.5
+            },
+            "size": {
+                "x": 0.089,
+                "y": 0.038,
+                "z": 0.662
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 156,
+            "partName": "中央前柱(2x4)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x4.6f",
+                "name": "SPF 2x4材",
+                "snapshotAt": "2026-11-14T17:36:26.075Z"
+            },
+            "unitPrice": 548,
+            "specificGravity": 0.4,
+            "remarks": "89×38×1820mm (6F) 定番 (cainz.com確認)"
+        },
+        {
+            "id": "b7a84d7d-2c3b-4fc4-866a-322403e6164e",
+            "name": "SPF 2x4材",
+            "position": {
+                "x": 0.6,
+                "y": 0.371,
+                "z": 0.056499999999999995
+            },
+            "quaternion": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5,
+                "w": -0.5
+            },
+            "size": {
+                "x": 0.089,
+                "y": 0.038,
+                "z": 0.662
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 157,
+            "partName": "中央奥柱(2x4)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x4.6f",
+                "name": "SPF 2x4材",
+                "snapshotAt": "2026-11-14T17:36:26.075Z"
+            },
+            "unitPrice": 548,
+            "specificGravity": 0.4,
+            "remarks": "89×38×1820mm (6F) 定番 (cainz.com確認)"
+        },
+        {
+            "id": "7286711c-c420-4464-a1b5-698133ce9aa1",
+            "name": "SPF 2x4材",
+            "position": {
+                "x": 1.1689999999999998,
+                "y": 0.371,
+                "z": 0.5055000000000001
+            },
+            "quaternion": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5,
+                "w": -0.5
+            },
+            "size": {
+                "x": 0.089,
+                "y": 0.038,
+                "z": 0.662
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 158,
+            "partName": "右前柱(2x4)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x4.6f",
+                "name": "SPF 2x4材",
+                "snapshotAt": "2026-11-14T17:36:26.075Z"
+            },
+            "unitPrice": 548,
+            "specificGravity": 0.4,
+            "remarks": "89×38×1820mm (6F) 定番 (cainz.com確認)"
+        },
+        {
+            "id": "bac9f7ba-29d9-49b3-a668-3a4ed2e22d13",
+            "name": "SPF 2x4材",
+            "position": {
+                "x": 1.1689999999999998,
+                "y": 0.371,
+                "z": 0.056499999999999995
+            },
+            "quaternion": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5,
+                "w": -0.5
+            },
+            "size": {
+                "x": 0.089,
+                "y": 0.038,
+                "z": 0.662
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 159,
+            "partName": "右奥柱(2x4)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x4.6f",
+                "name": "SPF 2x4材",
+                "snapshotAt": "2026-11-14T17:36:26.075Z"
+            },
+            "unitPrice": 548,
+            "specificGravity": 0.4,
+            "remarks": "89×38×1820mm (6F) 定番 (cainz.com確認)"
+        },
+        {
+            "id": "2712aa36-d9d2-4b34-8878-b80e457d1b0b",
+            "name": "SPF 2x4材",
+            "position": {
+                "x": 0.3155,
+                "y": 0.6575,
+                "z": 0.531
+            },
+            "quaternion": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5,
+                "w": 0.5
+            },
+            "size": {
+                "x": 0.089,
+                "y": 0.038,
+                "z": 0.531
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 160,
+            "partName": "前幕板(左・2x4縦)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x4.6f",
+                "name": "SPF 2x4材",
+                "snapshotAt": "2026-11-14T17:36:26.075Z"
+            },
+            "unitPrice": 548,
+            "specificGravity": 0.4,
+            "remarks": "89×38×1820mm (6F) 定番 (cainz.com確認)"
+        },
+        {
+            "id": "ff21071a-2943-4460-a71a-31db96fbc66f",
+            "name": "SPF 2x4材",
+            "position": {
+                "x": 0.8845000000000001,
+                "y": 0.6575,
+                "z": 0.531
+            },
+            "quaternion": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5,
+                "w": 0.5
+            },
+            "size": {
+                "x": 0.089,
+                "y": 0.038,
+                "z": 0.531
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 161,
+            "partName": "前幕板(右・2x4縦)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x4.6f",
+                "name": "SPF 2x4材",
+                "snapshotAt": "2026-11-14T17:36:26.075Z"
+            },
+            "unitPrice": 548,
+            "specificGravity": 0.4,
+            "remarks": "89×38×1820mm (6F) 定番 (cainz.com確認)"
+        },
+        {
+            "id": "6e5e0325-3f58-435a-8077-957d865166ea",
+            "name": "SPF 2x4材",
+            "position": {
+                "x": 0.3155,
+                "y": 0.6575,
+                "z": 0.031
+            },
+            "quaternion": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5,
+                "w": 0.5
+            },
+            "size": {
+                "x": 0.089,
+                "y": 0.038,
+                "z": 0.531
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 162,
+            "partName": "奥幕板(左・2x4縦)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x4.6f",
+                "name": "SPF 2x4材",
+                "snapshotAt": "2026-11-14T17:36:26.075Z"
+            },
+            "unitPrice": 548,
+            "specificGravity": 0.4,
+            "remarks": "89×38×1820mm (6F) 定番 (cainz.com確認)"
+        },
+        {
+            "id": "e44fac4a-21ab-4602-a90c-7484cd027063",
+            "name": "SPF 2x4材",
+            "position": {
+                "x": 0.8845000000000001,
+                "y": 0.6575,
+                "z": 0.031
+            },
+            "quaternion": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5,
+                "w": 0.5
+            },
+            "size": {
+                "x": 0.089,
+                "y": 0.038,
+                "z": 0.531
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 163,
+            "partName": "奥幕板(右・2x4縦)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x4.6f",
+                "name": "SPF 2x4材",
+                "snapshotAt": "2026-11-14T17:36:26.075Z"
+            },
+            "unitPrice": 548,
+            "specificGravity": 0.4,
+            "remarks": "89×38×1820mm (6F) 定番 (cainz.com確認)"
+        },
+        {
+            "id": "f7097fe3-4b98-42b1-a07a-fff993e2fa4c",
+            "name": "SPF 2x2材",
+            "position": {
+                "x": 0.031000000000000003,
+                "y": 0.059000000000000004,
+                "z": 0.281
+            },
+            "quaternion": {
+                "x": 0,
+                "y": 0,
+                "z": 0.7071067811865475,
+                "w": 0.7071067811865476
+            },
+            "size": {
+                "x": 0.038,
+                "y": 0.038,
+                "z": 0.36
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 164,
+            "partName": "左ラダー下段桟(2x2)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x2.6f",
+                "name": "SPF 2x2材",
+                "snapshotAt": "2026-11-14T17:36:26.075Z"
+            },
+            "unitPrice": 448,
+            "specificGravity": 0.4,
+            "remarks": "38×38×1820mm (6F) ※カインズ目安"
+        },
+        {
+            "id": "b933b450-8f20-4329-94ba-ab4b934bcddf",
+            "name": "SPF 2x2材",
+            "position": {
+                "x": 0.031000000000000003,
+                "y": 0.35900000000000004,
+                "z": 0.281
+            },
+            "quaternion": {
+                "x": 0,
+                "y": 0,
+                "z": 0.7071067811865475,
+                "w": 0.7071067811865476
+            },
+            "size": {
+                "x": 0.038,
+                "y": 0.038,
+                "z": 0.36
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 165,
+            "partName": "左ラダー中段桟(2x2)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x2.6f",
+                "name": "SPF 2x2材",
+                "snapshotAt": "2026-11-14T17:36:26.075Z"
+            },
+            "unitPrice": 448,
+            "specificGravity": 0.4,
+            "remarks": "38×38×1820mm (6F) ※カインズ目安"
+        },
+        {
+            "id": "d62dd633-8e05-4fea-bc4c-393b48d44687",
+            "name": "SPF 2x2材",
+            "position": {
+                "x": 0.031000000000000003,
+                "y": 0.683,
+                "z": 0.281
+            },
+            "quaternion": {
+                "x": 0,
+                "y": 0,
+                "z": 0.7071067811865475,
+                "w": 0.7071067811865476
+            },
+            "size": {
+                "x": 0.038,
+                "y": 0.038,
+                "z": 0.36
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 166,
+            "partName": "左ラダー上段桟(2x2)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x2.6f",
+                "name": "SPF 2x2材",
+                "snapshotAt": "2026-11-14T17:36:26.075Z"
+            },
+            "unitPrice": 448,
+            "specificGravity": 0.4,
+            "remarks": "38×38×1820mm (6F) ※カインズ目安"
+        },
+        {
+            "id": "484e98ee-d074-4a4c-adfd-a58df4a1c1e1",
+            "name": "SPF 2x2材",
+            "position": {
+                "x": 0.6,
+                "y": 0.059000000000000004,
+                "z": 0.281
+            },
+            "quaternion": {
+                "x": 0,
+                "y": 0,
+                "z": 0.7071067811865475,
+                "w": 0.7071067811865476
+            },
+            "size": {
+                "x": 0.038,
+                "y": 0.038,
+                "z": 0.36
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 167,
+            "partName": "中ラダー下段桟(2x2)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x2.6f",
+                "name": "SPF 2x2材",
+                "snapshotAt": "2026-11-14T17:36:26.075Z"
+            },
+            "unitPrice": 448,
+            "specificGravity": 0.4,
+            "remarks": "38×38×1820mm (6F) ※カインズ目安"
+        },
+        {
+            "id": "74bd123f-c6c1-4ea4-a975-52ad4b8662d8",
+            "name": "SPF 2x2材",
+            "position": {
+                "x": 0.6,
+                "y": 0.35900000000000004,
+                "z": 0.281
+            },
+            "quaternion": {
+                "x": 0,
+                "y": 0,
+                "z": 0.7071067811865475,
+                "w": 0.7071067811865476
+            },
+            "size": {
+                "x": 0.038,
+                "y": 0.038,
+                "z": 0.36
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 168,
+            "partName": "中ラダー中段桟(2x2)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x2.6f",
+                "name": "SPF 2x2材",
+                "snapshotAt": "2026-11-14T17:36:26.075Z"
+            },
+            "unitPrice": 448,
+            "specificGravity": 0.4,
+            "remarks": "38×38×1820mm (6F) ※カインズ目安"
+        },
+        {
+            "id": "671db483-9835-409e-8bec-17aaf447e167",
+            "name": "SPF 2x2材",
+            "position": {
+                "x": 0.6,
+                "y": 0.683,
+                "z": 0.281
+            },
+            "quaternion": {
+                "x": 0,
+                "y": 0,
+                "z": 0.7071067811865475,
+                "w": 0.7071067811865476
+            },
+            "size": {
+                "x": 0.038,
+                "y": 0.038,
+                "z": 0.36
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 169,
+            "partName": "中ラダー上段桟(2x2)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x2.6f",
+                "name": "SPF 2x2材",
+                "snapshotAt": "2026-11-14T17:36:26.075Z"
+            },
+            "unitPrice": 448,
+            "specificGravity": 0.4,
+            "remarks": "38×38×1820mm (6F) ※カインズ目安"
+        },
+        {
+            "id": "52d52828-4ebf-40ac-95cc-8da5fd4d998b",
+            "name": "SPF 2x2材",
+            "position": {
+                "x": 1.1689999999999998,
+                "y": 0.059000000000000004,
+                "z": 0.281
+            },
+            "quaternion": {
+                "x": 0,
+                "y": 0,
+                "z": 0.7071067811865475,
+                "w": 0.7071067811865476
+            },
+            "size": {
+                "x": 0.038,
+                "y": 0.038,
+                "z": 0.36
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 170,
+            "partName": "右ラダー下段桟(2x2)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x2.6f",
+                "name": "SPF 2x2材",
+                "snapshotAt": "2026-11-14T17:36:26.075Z"
+            },
+            "unitPrice": 448,
+            "specificGravity": 0.4,
+            "remarks": "38×38×1820mm (6F) ※カインズ目安"
+        },
+        {
+            "id": "09949968-96b0-4abf-8400-37d6738ec647",
+            "name": "SPF 2x2材",
+            "position": {
+                "x": 1.1689999999999998,
+                "y": 0.35900000000000004,
+                "z": 0.281
+            },
+            "quaternion": {
+                "x": 0,
+                "y": 0,
+                "z": 0.7071067811865475,
+                "w": 0.7071067811865476
+            },
+            "size": {
+                "x": 0.038,
+                "y": 0.038,
+                "z": 0.36
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 171,
+            "partName": "右ラダー中段桟(2x2)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x2.6f",
+                "name": "SPF 2x2材",
+                "snapshotAt": "2026-11-14T17:36:26.075Z"
+            },
+            "unitPrice": 448,
+            "specificGravity": 0.4,
+            "remarks": "38×38×1820mm (6F) ※カインズ目安"
+        },
+        {
+            "id": "18b11e0c-ed7e-4d10-a196-0683171ef0f2",
+            "name": "SPF 2x2材",
+            "position": {
+                "x": 1.1689999999999998,
+                "y": 0.683,
+                "z": 0.281
+            },
+            "quaternion": {
+                "x": 0,
+                "y": 0,
+                "z": 0.7071067811865475,
+                "w": 0.7071067811865476
+            },
+            "size": {
+                "x": 0.038,
+                "y": 0.038,
+                "z": 0.36
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 172,
+            "partName": "右ラダー上段桟(2x2)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x2.6f",
+                "name": "SPF 2x2材",
+                "snapshotAt": "2026-11-14T17:36:26.075Z"
+            },
+            "unitPrice": 448,
+            "specificGravity": 0.4,
+            "remarks": "38×38×1820mm (6F) ※カインズ目安"
+        },
+        {
+            "id": "244b6d66-5403-4b77-9c5b-ef5801e481d1",
+            "name": "SPF 2x2材",
+            "position": {
+                "x": 0.3155,
+                "y": 0.059,
+                "z": 0.531
+            },
+            "quaternion": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5,
+                "w": 0.5
+            },
+            "size": {
+                "x": 0.038,
+                "y": 0.038,
+                "z": 0.531
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 173,
+            "partName": "下段前横桟(左・2x2)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x2.6f",
+                "name": "SPF 2x2材",
+                "snapshotAt": "2026-11-14T17:36:26.075Z"
+            },
+            "unitPrice": 448,
+            "specificGravity": 0.4,
+            "remarks": "38×38×1820mm (6F) ※カインズ目安"
+        },
+        {
+            "id": "221b0268-69e4-4159-8f5e-55d62c97f24a",
+            "name": "SPF 2x2材",
+            "position": {
+                "x": 0.8845000000000001,
+                "y": 0.059,
+                "z": 0.531
+            },
+            "quaternion": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5,
+                "w": 0.5
+            },
+            "size": {
+                "x": 0.038,
+                "y": 0.038,
+                "z": 0.531
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 174,
+            "partName": "下段前横桟(右・2x2)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x2.6f",
+                "name": "SPF 2x2材",
+                "snapshotAt": "2026-11-14T17:36:26.075Z"
+            },
+            "unitPrice": 448,
+            "specificGravity": 0.4,
+            "remarks": "38×38×1820mm (6F) ※カインズ目安"
+        },
+        {
+            "id": "02fac670-047c-4614-b279-706d72d53155",
+            "name": "SPF 2x2材",
+            "position": {
+                "x": 0.3155,
+                "y": 0.059,
+                "z": 0.031
+            },
+            "quaternion": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5,
+                "w": 0.5
+            },
+            "size": {
+                "x": 0.038,
+                "y": 0.038,
+                "z": 0.531
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 175,
+            "partName": "下段奥横桟(左・2x2)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x2.6f",
+                "name": "SPF 2x2材",
+                "snapshotAt": "2026-11-14T17:36:26.075Z"
+            },
+            "unitPrice": 448,
+            "specificGravity": 0.4,
+            "remarks": "38×38×1820mm (6F) ※カインズ目安"
+        },
+        {
+            "id": "41bf1383-9791-47e8-896a-c996d631bf75",
+            "name": "SPF 2x2材",
+            "position": {
+                "x": 0.8845000000000001,
+                "y": 0.059,
+                "z": 0.031
+            },
+            "quaternion": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5,
+                "w": 0.5
+            },
+            "size": {
+                "x": 0.038,
+                "y": 0.038,
+                "z": 0.531
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 176,
+            "partName": "下段奥横桟(右・2x2)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x2.6f",
+                "name": "SPF 2x2材",
+                "snapshotAt": "2026-11-14T17:36:26.075Z"
+            },
+            "unitPrice": 448,
+            "specificGravity": 0.4,
+            "remarks": "38×38×1820mm (6F) ※カインズ目安"
+        },
+        {
+            "id": "3651a125-be26-4ae2-947e-346965aedc8f",
+            "name": "SPF 2x2材",
+            "position": {
+                "x": 0.3155,
+                "y": 0.35900000000000004,
+                "z": 0.531
+            },
+            "quaternion": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5,
+                "w": 0.5
+            },
+            "size": {
+                "x": 0.038,
+                "y": 0.038,
+                "z": 0.531
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 177,
+            "partName": "中段前横桟(左・2x2)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x2.6f",
+                "name": "SPF 2x2材",
+                "snapshotAt": "2026-11-14T17:36:26.075Z"
+            },
+            "unitPrice": 448,
+            "specificGravity": 0.4,
+            "remarks": "38×38×1820mm (6F) ※カインズ目安"
+        },
+        {
+            "id": "48b05121-22ba-40e2-ad41-80c11563bc98",
+            "name": "SPF 2x2材",
+            "position": {
+                "x": 0.8845000000000001,
+                "y": 0.35900000000000004,
+                "z": 0.531
+            },
+            "quaternion": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5,
+                "w": 0.5
+            },
+            "size": {
+                "x": 0.038,
+                "y": 0.038,
+                "z": 0.531
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 178,
+            "partName": "中段前横桟(右・2x2)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x2.6f",
+                "name": "SPF 2x2材",
+                "snapshotAt": "2026-11-14T17:36:26.075Z"
+            },
+            "unitPrice": 448,
+            "specificGravity": 0.4,
+            "remarks": "38×38×1820mm (6F) ※カインズ目安"
+        },
+        {
+            "id": "8fec6300-4063-4bf9-a27a-751be0e27de5",
+            "name": "SPF 2x2材",
+            "position": {
+                "x": 0.3155,
+                "y": 0.35900000000000004,
+                "z": 0.031
+            },
+            "quaternion": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5,
+                "w": 0.5
+            },
+            "size": {
+                "x": 0.038,
+                "y": 0.038,
+                "z": 0.531
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 179,
+            "partName": "中段奥横桟(左・2x2)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x2.6f",
+                "name": "SPF 2x2材",
+                "snapshotAt": "2026-11-14T17:36:26.075Z"
+            },
+            "unitPrice": 448,
+            "specificGravity": 0.4,
+            "remarks": "38×38×1820mm (6F) ※カインズ目安"
+        },
+        {
+            "id": "170a1936-cb87-4078-9a8e-2a02db59f2e2",
+            "name": "SPF 2x2材",
+            "position": {
+                "x": 0.8845000000000001,
+                "y": 0.35900000000000004,
+                "z": 0.031
+            },
+            "quaternion": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5,
+                "w": 0.5
+            },
+            "size": {
+                "x": 0.038,
+                "y": 0.038,
+                "z": 0.531
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 180,
+            "partName": "中段奥横桟(右・2x2)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x2.6f",
+                "name": "SPF 2x2材",
+                "snapshotAt": "2026-11-14T17:36:26.076Z"
+            },
+            "unitPrice": 448,
+            "specificGravity": 0.4,
+            "remarks": "38×38×1820mm (6F) ※カインズ目安"
+        },
+        {
+            "id": "f6248a85-e0c8-408b-81a4-d7ae179c64bb",
+            "name": "パイン集成材 18mm (600×1820)",
+            "position": {
+                "x": 0.6000000000000001,
+                "y": 0.711,
+                "z": 0.27500000000000013
+            },
+            "quaternion": {
+                "x": 0.7071067811865475,
+                "y": 0,
+                "z": 0.7071067811865476,
+                "w": 0
+            },
+            "size": {
+                "x": 0.55,
+                "y": 0.018,
+                "z": 1.2
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 2,
+            "color": {
+                "r": 0.95,
+                "g": 0.88,
+                "b": 0.75
+            },
+            "textureId": 1,
+            "displayId": 181,
+            "partName": "天板(パイン集成材18mm)",
+            "type": "board",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "board.pine.18.600x1820",
+                "name": "パイン集成材 18mm (600×1820)",
+                "snapshotAt": "2026-11-14T17:36:28.326Z"
+            },
+            "unitPrice": 5280,
+            "specificGravity": 0.5,
+            "remarks": "600×18×1820mm"
+        },
+        {
+            "id": "fbe94be2-3d32-4730-a0ad-37cfb701aa17",
+            "name": "針葉樹構造用合板 12mm",
+            "position": {
+                "x": 0.6,
+                "y": 0.371,
+                "z": 0.006000000000000074
+            },
+            "quaternion": {
+                "x": -0.7071067811865475,
+                "y": 0,
+                "z": 0,
+                "w": 0.7071067811865476
+            },
+            "size": {
+                "x": 1.2,
+                "y": 0.012,
+                "z": 0.662
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 2,
+            "color": {
+                "r": 0.92,
+                "g": 0.82,
+                "b": 0.62
+            },
+            "textureId": 1,
+            "displayId": 182,
+            "partName": "背板(12mm全面耐力壁)",
+            "type": "board",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "board.softplywood.12.910x1820",
+                "name": "針葉樹構造用合板 12mm",
+                "snapshotAt": "2026-11-14T17:36:28.326Z"
+            },
+            "unitPrice": 1580,
+            "specificGravity": 0.55,
+            "remarks": "910×12×1820mm (3×6板) 定番 ※カインズ目安"
+        },
+        {
+            "id": "efa95d81-4ba1-4195-9d32-15fae05c894a",
+            "name": "針葉樹構造用合板 12mm",
+            "position": {
+                "x": 0.006,
+                "y": 0.371,
+                "z": 0.281
+            },
+            "quaternion": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5,
+                "w": -0.5
+            },
+            "size": {
+                "x": 0.538,
+                "y": 0.012,
+                "z": 0.662
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 2,
+            "color": {
+                "r": 0.92,
+                "g": 0.82,
+                "b": 0.62
+            },
+            "textureId": 1,
+            "displayId": 183,
+            "partName": "左側板(12mm)",
+            "type": "board",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "board.softplywood.12.910x1820",
+                "name": "針葉樹構造用合板 12mm",
+                "snapshotAt": "2026-11-14T17:36:28.326Z"
+            },
+            "unitPrice": 1580,
+            "specificGravity": 0.55,
+            "remarks": "910×12×1820mm (3×6板) 定番 ※カインズ目安"
+        },
+        {
+            "id": "4aa3bbad-a40f-42b0-89d2-8a659bbc9dd0",
+            "name": "針葉樹構造用合板 12mm",
+            "position": {
+                "x": 1.194,
+                "y": 0.371,
+                "z": 0.281
+            },
+            "quaternion": {
+                "x": 0.5,
+                "y": 0.5,
+                "z": 0.5,
+                "w": -0.5
+            },
+            "size": {
+                "x": 0.538,
+                "y": 0.012,
+                "z": 0.662
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 2,
+            "color": {
+                "r": 0.92,
+                "g": 0.82,
+                "b": 0.62
+            },
+            "textureId": 1,
+            "displayId": 184,
+            "partName": "右側板(12mm)",
+            "type": "board",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "board.softplywood.12.910x1820",
+                "name": "針葉樹構造用合板 12mm",
+                "snapshotAt": "2026-11-14T17:36:28.326Z"
+            },
+            "unitPrice": 1580,
+            "specificGravity": 0.55,
+            "remarks": "910×12×1820mm (3×6板) 定番 ※カインズ目安"
+        },
+        {
+            "id": "92a524d3-b7d9-4f93-ac5d-ecb5227e672b",
+            "name": "針葉樹構造用合板 12mm",
+            "position": {
+                "x": 0.31550000000000006,
+                "y": 0.084,
+                "z": 0.2810000000000001
+            },
+            "quaternion": {
+                "x": 0.7071067811865475,
+                "y": 0,
+                "z": 0.7071067811865476,
+                "w": 0
+            },
+            "size": {
+                "x": 0.538,
+                "y": 0.012,
+                "z": 0.531
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 2,
+            "color": {
+                "r": 0.92,
+                "g": 0.82,
+                "b": 0.62
+            },
+            "textureId": 1,
+            "displayId": 185,
+            "partName": "下段棚板(左12mm)",
+            "type": "board",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "board.softplywood.12.910x1820",
+                "name": "針葉樹構造用合板 12mm",
+                "snapshotAt": "2026-11-14T17:36:28.326Z"
+            },
+            "unitPrice": 1580,
+            "specificGravity": 0.55,
+            "remarks": "910×12×1820mm (3×6板) 定番 ※カインズ目安"
+        },
+        {
+            "id": "b60c04fe-9920-4ea8-9a7d-64a89f0aa1d4",
+            "name": "針葉樹構造用合板 12mm",
+            "position": {
+                "x": 0.8845000000000001,
+                "y": 0.084,
+                "z": 0.2810000000000001
+            },
+            "quaternion": {
+                "x": 0.7071067811865475,
+                "y": 0,
+                "z": 0.7071067811865476,
+                "w": 0
+            },
+            "size": {
+                "x": 0.538,
+                "y": 0.012,
+                "z": 0.531
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 2,
+            "color": {
+                "r": 0.92,
+                "g": 0.82,
+                "b": 0.62
+            },
+            "textureId": 1,
+            "displayId": 186,
+            "partName": "下段棚板(右12mm)",
+            "type": "board",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "board.softplywood.12.910x1820",
+                "name": "針葉樹構造用合板 12mm",
+                "snapshotAt": "2026-11-14T17:36:28.326Z"
+            },
+            "unitPrice": 1580,
+            "specificGravity": 0.55,
+            "remarks": "910×12×1820mm (3×6板) 定番 ※カインズ目安"
+        },
+        {
+            "id": "8895d188-ac02-4fa1-bba9-362825cd82eb",
+            "name": "針葉樹構造用合板 12mm",
+            "position": {
+                "x": 0.31550000000000006,
+                "y": 0.384,
+                "z": 0.2810000000000001
+            },
+            "quaternion": {
+                "x": 0.7071067811865475,
+                "y": 0,
+                "z": 0.7071067811865476,
+                "w": 0
+            },
+            "size": {
+                "x": 0.538,
+                "y": 0.012,
+                "z": 0.531
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 2,
+            "color": {
+                "r": 0.92,
+                "g": 0.82,
+                "b": 0.62
+            },
+            "textureId": 1,
+            "displayId": 187,
+            "partName": "中段棚板(左12mm)",
+            "type": "board",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "board.softplywood.12.910x1820",
+                "name": "針葉樹構造用合板 12mm",
+                "snapshotAt": "2026-11-14T17:36:28.326Z"
+            },
+            "unitPrice": 1580,
+            "specificGravity": 0.55,
+            "remarks": "910×12×1820mm (3×6板) 定番 ※カインズ目安"
+        },
+        {
+            "id": "01823799-fc8b-46ae-aeae-01dfc1c4b3d8",
+            "name": "針葉樹構造用合板 12mm",
+            "position": {
+                "x": 0.8845000000000001,
+                "y": 0.384,
+                "z": 0.2810000000000001
+            },
+            "quaternion": {
+                "x": 0.7071067811865475,
+                "y": 0,
+                "z": 0.7071067811865476,
+                "w": 0
+            },
+            "size": {
+                "x": 0.538,
+                "y": 0.012,
+                "z": 0.531
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 2,
+            "color": {
+                "r": 0.92,
+                "g": 0.82,
+                "b": 0.62
+            },
+            "textureId": 1,
+            "displayId": 188,
+            "partName": "中段棚板(右12mm)",
+            "type": "board",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "board.softplywood.12.910x1820",
+                "name": "針葉樹構造用合板 12mm",
+                "snapshotAt": "2026-11-14T17:36:28.326Z"
+            },
+            "unitPrice": 1580,
+            "specificGravity": 0.55,
+            "remarks": "910×12×1820mm (3×6板) 定番 ※カインズ目安"
+        },
+        {
+            "id": "9522a798-7e2f-4831-a3fb-ea37de93e6fa",
+            "name": "SPF 2x4材",
+            "position": {
+                "x": 0.3155,
+                "y": 0.6575,
+                "z": 0.281
+            },
+            "quaternion": {
+                "x": 0,
+                "y": 0,
+                "z": 0.7071067811865475,
+                "w": 0.7071067811865476
+            },
+            "size": {
+                "x": 0.089,
+                "y": 0.038,
+                "z": 0.462
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 189,
+            "partName": "天板中間根太(左・2x4縦)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x4.6f",
+                "name": "SPF 2x4材",
+                "snapshotAt": "2026-11-14T17:37:16.389Z"
+            },
+            "unitPrice": 548,
+            "specificGravity": 0.4,
+            "remarks": "89×38×1820mm (6F) 定番 (cainz.com確認)"
+        },
+        {
+            "id": "e85e847b-d6b2-4ca3-ae05-a25815ea31d4",
+            "name": "SPF 2x4材",
+            "position": {
+                "x": 0.8845000000000001,
+                "y": 0.6575,
+                "z": 0.281
+            },
+            "quaternion": {
+                "x": 0,
+                "y": 0,
+                "z": 0.7071067811865475,
+                "w": 0.7071067811865476
+            },
+            "size": {
+                "x": 0.089,
+                "y": 0.038,
+                "z": 0.462
+            },
+            "visible": true,
+            "locked": false,
+            "groupId": 0,
+            "layerId": 1,
+            "color": {
+                "r": 1,
+                "g": 1,
+                "b": 0.8
+            },
+            "textureId": 1,
+            "displayId": 190,
+            "partName": "天板中間根太(右・2x4縦)",
+            "type": "lumber",
+            "cutAngles": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+            ],
+            "standardRef": {
+                "setId": "user.piktxu28t",
+                "standardId": "lumber.spf.2x4.6f",
+                "name": "SPF 2x4材",
+                "snapshotAt": "2026-11-14T17:37:16.389Z"
+            },
+            "unitPrice": 548,
+            "specificGravity": 0.4,
+            "remarks": "89×38×1820mm (6F) 定番 (cainz.com確認)"
+        }
+    ],
+    "layers": [
+        {
+            "id": 0,
+            "name": "3Dプリンタラック",
+            "visible": true,
+            "locked": false,
+            "color": {
+                "r": 0.30980392156862746,
+                "g": 0.5019607843137255,
+                "b": 1
+            },
+            "colorMode": false,
+            "parentId": null
+        },
+        {
+            "id": 1,
+            "name": "01_構造フレーム (2x4・2x2)",
+            "visible": true,
+            "locked": false,
+            "color": {
+                "r": 1,
+                "g": 0.30980392156862746,
+                "b": 0.30980392156862746
+            },
+            "colorMode": false,
+            "parentId": 0
+        },
+        {
+            "id": 2,
+            "name": "02_天板・パネル・棚板 (合板)",
+            "visible": true,
+            "locked": false,
+            "color": {
+                "r": 0.30980392156862746,
+                "g": 1,
+                "b": 0.30980392156862746
+            },
+            "colorMode": false,
+            "parentId": 0
+        },
+        {
+            "id": 3,
+            "name": "03_金物・参考プリンター配置",
+            "visible": true,
+            "locked": false,
+            "color": {
+                "r": 0.30980392156862746,
+                "g": 0.30980392156862746,
+                "b": 1
+            },
+            "colorMode": false,
+            "parentId": 0
+        }
+    ],
+    "snaps": [],
+    "cutList": {
+        "cutWidthMm": 3,
+        "packingMode": "guillotine",
+        "layouts": [
+            {
+                "baseId": 0,
+                "partsId": "244b6d66-5403-4b77-9c5b-ef5801e481d1",
+                "x": 0,
+                "z": 0
+            },
+            {
+                "baseId": 0,
+                "partsId": "221b0268-69e4-4159-8f5e-55d62c97f24a",
+                "x": 0,
+                "z": 0.534000018119812
+            },
+            {
+                "baseId": 0,
+                "partsId": "02fac670-047c-4614-b279-706d72d53155",
+                "x": 0,
+                "z": 1.068000036239624
+            },
+            {
+                "baseId": 1,
+                "partsId": "41bf1383-9791-47e8-896a-c996d631bf75",
+                "x": 0,
+                "z": 0
+            },
+            {
+                "baseId": 1,
+                "partsId": "3651a125-be26-4ae2-947e-346965aedc8f",
+                "x": 0,
+                "z": 0.534000018119812
+            },
+            {
+                "baseId": 1,
+                "partsId": "48b05121-22ba-40e2-ad41-80c11563bc98",
+                "x": 0,
+                "z": 1.068000036239624
+            },
+            {
+                "baseId": 2,
+                "partsId": "8fec6300-4063-4bf9-a27a-751be0e27de5",
+                "x": 0,
+                "z": 0
+            },
+            {
+                "baseId": 2,
+                "partsId": "170a1936-cb87-4078-9a8e-2a02db59f2e2",
+                "x": 0,
+                "z": 0.534000018119812
+            },
+            {
+                "baseId": 2,
+                "partsId": "f7097fe3-4b98-42b1-a07a-fff993e2fa4c",
+                "x": 0,
+                "z": 1.068000036239624
+            },
+            {
+                "baseId": 2,
+                "partsId": "b933b450-8f20-4329-94ba-ab4b934bcddf",
+                "x": 0,
+                "z": 1.4310000505447387
+            },
+            {
+                "baseId": 3,
+                "partsId": "d62dd633-8e05-4fea-bc4c-393b48d44687",
+                "x": 0,
+                "z": 0
+            },
+            {
+                "baseId": 3,
+                "partsId": "484e98ee-d074-4a4c-adfd-a58df4a1c1e1",
+                "x": 0,
+                "z": 0.36300001430511475
+            },
+            {
+                "baseId": 3,
+                "partsId": "74bd123f-c6c1-4ea4-a975-52ad4b8662d8",
+                "x": 0,
+                "z": 0.7260000286102295
+            },
+            {
+                "baseId": 3,
+                "partsId": "671db483-9835-409e-8bec-17aaf447e167",
+                "x": 0,
+                "z": 1.0890000429153441
+            },
+            {
+                "baseId": 3,
+                "partsId": "52d52828-4ebf-40ac-95cc-8da5fd4d998b",
+                "x": 0,
+                "z": 1.4520000572204588
+            },
+            {
+                "baseId": 4,
+                "partsId": "09949968-96b0-4abf-8400-37d6738ec647",
+                "x": 0,
+                "z": 0
+            },
+            {
+                "baseId": 4,
+                "partsId": "18b11e0c-ed7e-4d10-a196-0683171ef0f2",
+                "x": 0,
+                "z": 0.36300001430511475
+            },
+            {
+                "baseId": 0,
+                "partsId": "0a8ea36f-495b-44fd-bba6-e0acaf69ac10",
+                "x": 0,
+                "z": 0
+            },
+            {
+                "baseId": 0,
+                "partsId": "87f86482-61e2-41cd-89f8-eb07323102e7",
+                "x": 0,
+                "z": 0.6650000004768372
+            },
+            {
+                "baseId": 0,
+                "partsId": "9522a798-7e2f-4831-a3fb-ea37de93e6fa",
+                "x": 0,
+                "z": 1.3300000009536743
+            },
+            {
+                "baseId": 1,
+                "partsId": "ee139f16-3678-4f1e-8735-9b9e287310ec",
+                "x": 0,
+                "z": 0
+            },
+            {
+                "baseId": 1,
+                "partsId": "b7a84d7d-2c3b-4fc4-866a-322403e6164e",
+                "x": 0,
+                "z": 0.6650000004768372
+            },
+            {
+                "baseId": 1,
+                "partsId": "e85e847b-d6b2-4ca3-ae05-a25815ea31d4",
+                "x": 0,
+                "z": 1.3300000009536743
+            },
+            {
+                "baseId": 2,
+                "partsId": "7286711c-c420-4464-a1b5-698133ce9aa1",
+                "x": 0,
+                "z": 0
+            },
+            {
+                "baseId": 2,
+                "partsId": "bac9f7ba-29d9-49b3-a668-3a4ed2e22d13",
+                "x": 0,
+                "z": 0.6650000004768372
+            },
+            {
+                "baseId": 3,
+                "partsId": "2712aa36-d9d2-4b34-8878-b80e457d1b0b",
+                "x": 0,
+                "z": 0
+            },
+            {
+                "baseId": 3,
+                "partsId": "ff21071a-2943-4460-a71a-31db96fbc66f",
+                "x": 0,
+                "z": 0.534000018119812
+            },
+            {
+                "baseId": 3,
+                "partsId": "6e5e0325-3f58-435a-8077-957d865166ea",
+                "x": 0,
+                "z": 1.068000036239624
+            },
+            {
+                "baseId": 4,
+                "partsId": "e44fac4a-21ab-4602-a90c-7484cd027063",
+                "x": 0,
+                "z": 0
+            },
+            {
+                "baseId": 0,
+                "partsId": "f6248a85-e0c8-408b-81a4-d7ae179c64bb",
+                "x": 0,
+                "z": 0
+            },
+            {
+                "baseId": 0,
+                "partsId": "fbe94be2-3d32-4730-a0ad-37cfb701aa17",
+                "x": 0,
+                "z": 0
+            },
+            {
+                "baseId": 0,
+                "partsId": "efa95d81-4ba1-4195-9d32-15fae05c894a",
+                "x": 0,
+                "z": 0.665
+            },
+            {
+                "baseId": 1,
+                "partsId": "4aa3bbad-a40f-42b0-89d2-8a659bbc9dd0",
+                "x": 0,
+                "z": 0
+            },
+            {
+                "baseId": 1,
+                "partsId": "92a524d3-b7d9-4f93-ac5d-ecb5227e672b",
+                "x": 0,
+                "z": 0.665
+            },
+            {
+                "baseId": 1,
+                "partsId": "b60c04fe-9920-4ea8-9a7d-64a89f0aa1d4",
+                "x": 0,
+                "z": 1.199
+            },
+            {
+                "baseId": 2,
+                "partsId": "8895d188-ac02-4fa1-bba9-362825cd82eb",
+                "x": 0,
+                "z": 0
+            },
+            {
+                "baseId": 2,
+                "partsId": "01823799-fc8b-46ae-aeae-01dfc1c4b3d8",
+                "x": 0,
+                "z": 0.534
+            }
+        ]
+    }
+}

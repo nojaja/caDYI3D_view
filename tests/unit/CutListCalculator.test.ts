@@ -131,8 +131,8 @@ describe('CutListCalculator - 材料取り図(木取り図)の計算ロジック
     expect(sheetsEmpty).toEqual([]);
   });
 
-  it('testdata/002.cadiy4 の合板(2D材料)および形状加工(edgeCuts)を材料取り図に正しく反映できること', () => {
-    const filePath = path.resolve(__dirname, '../../testdata/002.cadiy4');
+  it('002.cadiy4 の合板(2D材料)および形状加工(edgeCuts)を材料取り図に正しく反映できること', () => {
+    const filePath = path.resolve(__dirname, '../data/002.cadiy4');
     const content = fs.readFileSync(filePath, 'utf-8');
     const parser = new Cadiy4Parser();
     const data = parser.parse(content);
@@ -170,8 +170,8 @@ describe('CutListCalculator - 材料取り図(木取り図)の計算ロジック
     expect(item2.positionMm.z).toBeCloseTo(1359, 1);
   });
 
-  it('testdata/001.cadiy4 の材料取り図で各材料規格ごとに独立した素材シートが生成され、サイズ感が合っていること', () => {
-    const filePath = path.resolve(__dirname, '../../testdata/001.cadiy4');
+  it('001.cadiy4 の材料取り図で各材料規格ごとに独立した素材シートが生成され、サイズ感が合っていること', () => {
+    const filePath = path.resolve(__dirname, '../data/001.cadiy4');
     const content = fs.readFileSync(filePath, 'utf-8');
     const parser = new Cadiy4Parser();
     const data = parser.parse(content);
@@ -262,8 +262,8 @@ describe('CutListCalculator - 材料取り図(木取り図)の計算ロジック
     expect(sheets[0].items[0].object.id).toBe('normal-1');
   });
 
-  it('testdata/003.cadiy4 の材料取り図でdummyオブジェクト(アジャスター等)が除外されて実部材14個の素材シートが生成されること', () => {
-    const filePath = path.resolve(__dirname, '../../testdata/003.cadiy4');
+  it('003.cadiy4 の材料取り図でdummyオブジェクト(アジャスター等)が除外されて実部材14個の素材シートが生成されること', () => {
+    const filePath = path.resolve(__dirname, '../data/003.cadiy4');
     const content = fs.readFileSync(filePath, 'utf-8');
     const parser = new Cadiy4Parser();
     const data = parser.parse(content);
@@ -321,8 +321,8 @@ describe('CutListCalculator - 材料取り図(木取り図)の計算ロジック
     }
   });
 
-  it('testdata/007.cadiy4 の材料 #1（針葉樹合板）でサイズが異なる2つのパーツ(1820mm, 1721mm)が正しく計算され、usedLengthMmが最大長を反映すること', () => {
-    const filePath = path.resolve(__dirname, '../../testdata/007.cadiy4');
+  it('007.cadiy4 の材料 #1（針葉樹合板）でサイズが異なる2つのパーツ(1820mm, 1721mm)が正しく計算され、usedLengthMmが最大長を反映すること', () => {
+    const filePath = path.resolve(__dirname, '../data/007.cadiy4');
     const content = fs.readFileSync(filePath, 'utf-8');
     const parser = new Cadiy4Parser();
     const data = parser.parse(content);

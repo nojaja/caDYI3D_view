@@ -81,6 +81,31 @@ function main() {
     }
   }
 
+  // 4. PolygonMeshTable validation (if present)
+  if (file.polygonMeshTable) {
+    const meshItems = Array.isArray(file.polygonMeshTable) ? file.polygonMeshTable : Object.values(file.polygonMeshTable);
+    let meshErrors = 0;
+    meshItems.forEach((m, idx) => {
+      if (!m.meshId) {
+        console.error(`PolygonMeshItem [${idx}] missing 'meshId'`);
+        meshErrors++;
+      }
+      if (!Array.isArray(m.vertices)) {
+        console.error(`PolygonMeshItem [${idx}] (${m.meshId}) 'vertices' is not an array`);
+        meshErrors++;
+      }
+      if (!Array.isArray(m.faces)) {
+        console.error(`PolygonMeshItem [${idx}] (${m.meshId}) 'faces' is not an array`);
+        meshErrors++;
+      }
+    });
+    if (meshErrors > 0) {
+      errors += meshErrors;
+    } else {
+      console.log(`PolygonMeshTable: OK (${meshItems.length} mesh definitions validated)`);
+    }
+  }
+
   if (errors === 0) {
     console.log(`\nValidation PASSED! (${file.objects?.length || 0} objects checked, 0 errors)`);
   } else {

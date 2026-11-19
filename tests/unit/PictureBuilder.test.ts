@@ -8,8 +8,8 @@ import { PictureObject } from '../../src/types/cadiy4';
 import { decodeImageData } from '../../src/utils/imageUtils';
 
 describe('PictureBuilder - 画像オブジェクト(picture)の生成', () => {
-  it('testdata/004.cadiy4 の画像オブジェクトを正しく Mesh として構築できること', () => {
-    const filePath = path.resolve(__dirname, '../../testdata/004.cadiy4');
+  it('004.cadiy4 の画像オブジェクトを正しく Mesh として構築できること', () => {
+    const filePath = path.resolve(__dirname, '../data/004.cadiy4');
     const content = fs.readFileSync(filePath, 'utf-8');
     const parser = new Cadiy4Parser();
     const data = parser.parse(content);
@@ -45,7 +45,7 @@ describe('PictureBuilder - 画像オブジェクト(picture)の生成', () => {
   });
 
   it('zlib deflate 圧縮された imageBase64 を正常にデコードできること', async () => {
-    const filePath = path.resolve(__dirname, '../../testdata/004.cadiy4');
+    const filePath = path.resolve(__dirname, '../data/004.cadiy4');
     const content = fs.readFileSync(filePath, 'utf-8');
     const data = JSON.parse(content);
     const tableItem = data.pictureImageTable[0];

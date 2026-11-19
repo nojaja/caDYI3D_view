@@ -6,8 +6,8 @@ import { Cadiy4Parser } from '../../src/loader/Cadiy4Parser';
 import { ViewerUI } from '../../src/ui/ViewerUI';
 
 describe('ViewerUI - 材料取り図(木取り図) SVG描画ロジック', () => {
-  it('testdata/007.cadiy4 の材料 #1（針葉樹合板）で長さが異なる2パーツ(1820mmと1721mm)の木取り線が貫通せず、各パーツの領域に正しく描画されること', () => {
-    const filePath = path.resolve(__dirname, '../../testdata/007.cadiy4');
+  it('007.cadiy4 の材料 #1（針葉樹合板）で長さが異なる2パーツ(1820mmと1721mm)の木取り線が貫通せず、各パーツの領域に正しく描画されること', () => {
+    const filePath = path.resolve(__dirname, '../data/007.cadiy4');
     const content = fs.readFileSync(filePath, 'utf-8');
     const parser = new Cadiy4Parser();
     const data = parser.parse(content);
@@ -54,7 +54,7 @@ describe('ViewerUI - 材料取り図(木取り図) SVG描画ロジック', () =>
   });
 
   it('2D合板シート(材料 #1, #2, #3等)のパーツ要素にHTML用のcutplan-part-blockクラスが付与されず、SVG専用のcutplan-svg-partが付与されること', () => {
-    const filePath = path.resolve(__dirname, '../../testdata/007.cadiy4');
+    const filePath = path.resolve(__dirname, '../data/007.cadiy4');
     const content = fs.readFileSync(filePath, 'utf-8');
     const parser = new Cadiy4Parser();
     const data = parser.parse(content);
@@ -77,8 +77,8 @@ describe('ViewerUI - 材料取り図(木取り図) SVG描画ロジック', () =>
     }
   });
 
-  it('testdata/007.cadiy4 の材料 #9(斜めカット01)および材料 #10(斜めカット02)で、Edge 4の斜めカット木取り線・端材ポリゴンが正しく描画されること', () => {
-    const filePath = path.resolve(__dirname, '../../testdata/007.cadiy4');
+  it('007.cadiy4 の材料 #9(斜めカット01)および材料 #10(斜めカット02)で、Edge 4の斜めカット木取り線・端材ポリゴンが正しく描画されること', () => {
+    const filePath = path.resolve(__dirname, '../data/007.cadiy4');
     const content = fs.readFileSync(filePath, 'utf-8');
     const parser = new Cadiy4Parser();
     const data = parser.parse(content);

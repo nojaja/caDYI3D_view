@@ -99,6 +99,7 @@ export interface CadiyObjectBase {
   layerId?: number;
   color: ColorRGB;
   textureId?: number;
+  defaultPaintId?: string;
   displayId?: number;
   type: ObjectType;
   dummy?: boolean;
@@ -293,15 +294,37 @@ export interface CutListData {
   layouts: CutLayoutItem[];
 }
 
+export interface PolygonMeshFace {
+  indices: number[];
+  vertexNormals?: Vector3[];
+}
+
 export interface PolygonMeshItem {
   meshId: string;
-  vertices: number[];
-  faces: number[];
+  vertices: Vector3[] | number[];
+  faces: PolygonMeshFace[] | number[];
 }
 
 export interface PolygonMesh {
-  vertices?: number[];
-  faces?: number[];
+  vertices?: Vector3[] | number[];
+  faces?: PolygonMeshFace[] | number[];
+}
+
+export interface PaintItem {
+  id: string;
+  name: string;
+  color: ColorRGB;
+  finish?: string;
+  specs?: any[];
+}
+
+export interface PaintSnapshot {
+  id?: string;
+  name?: string;
+  isPreset?: boolean;
+  paints?: PaintItem[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Cadiy4Data {
@@ -315,6 +338,9 @@ export interface Cadiy4Data {
   selectedIds?: string[];
   snaps?: any[];
   cutList?: CutListData;
+  paint?: {
+    snapshot?: PaintSnapshot;
+  };
   pictureImageTable?: PictureImageItem[];
   polygonMeshTable?: PolygonMeshItem[] | Record<string, PolygonMesh>;
 }

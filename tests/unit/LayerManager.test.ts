@@ -184,7 +184,7 @@ describe('LayerManager - レイヤー一覧・階層ツリー・表示制御', (
   });
 
   it('実例から切り出した nested_layers_test.cadiy4 を読み込み、階層構造と初期可視性が正しく反映されること', () => {
-    const testDataPath = path.resolve(__dirname, '../../testdata/nested_layers_test.cadiy4');
+    const testDataPath = path.resolve(__dirname, '../data/nested_layers_test.cadiy4');
     const rawData = JSON.parse(fs.readFileSync(testDataPath, 'utf-8'));
 
     const manager = new LayerManager();

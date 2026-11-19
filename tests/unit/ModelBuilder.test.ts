@@ -74,8 +74,8 @@ describe('ModelBuilder', () => {
     expect(mesh.visible).toBe(false);
   });
 
-  it('testdata/002.cadiy4 の形状加工(edgeCuts)付き合板を正確な形状ジオメトリとして構築できること', () => {
-    const filePath = path.resolve(__dirname, '../../testdata/002.cadiy4');
+  it('002.cadiy4 の形状加工(edgeCuts)付き合板を正確な形状ジオメトリとして構築できること', () => {
+    const filePath = path.resolve(__dirname, '../data/002.cadiy4');
     const content = fs.readFileSync(filePath, 'utf-8');
     const parser = new Cadiy4Parser();
     const data = parser.parse(content);
@@ -139,8 +139,8 @@ describe('ModelBuilder', () => {
     expect(leftTopY).toBeCloseTo(1.22, 2);
   });
 
-  it('testdata/007.cadiy4 の斜めカット01・斜めカット02(edgeIndex: 4)のカット方向が正しく天板01の傾斜と整合すること', () => {
-    const filePath = path.resolve(__dirname, '../../testdata/007.cadiy4');
+  it('007.cadiy4 の斜めカット01・斜めカット02(edgeIndex: 4)のカット方向が正しく天板01の傾斜と整合すること', () => {
+    const filePath = path.resolve(__dirname, '../data/007.cadiy4');
     const content = fs.readFileSync(filePath, 'utf-8');
     const parser = new Cadiy4Parser();
     const data = parser.parse(content);
@@ -243,8 +243,8 @@ describe('ModelBuilder', () => {
     }
   });
 
-  it('testdata/007.cadiy4 の全オブジェクトを構築し、塩ビパイプがすべてtubeとして生成されること', () => {
-    const filePath = path.resolve(__dirname, '../../testdata/007.cadiy4');
+  it('007.cadiy4 の全オブジェクトを構築し、塩ビパイプがすべてtubeとして生成されること', () => {
+    const filePath = path.resolve(__dirname, '../data/007.cadiy4');
     const content = fs.readFileSync(filePath, 'utf-8');
     const parser = new Cadiy4Parser();
     const data = parser.parse(content);
@@ -302,7 +302,7 @@ describe('ModelBuilder', () => {
     expect(line).toBeDefined();
 
     // 007.cadiy4 の下水接続口コメントが正しく構築されること
-    const filePath = path.resolve(__dirname, '../../testdata/007.cadiy4');
+    const filePath = path.resolve(__dirname, '../data/007.cadiy4');
     const content = fs.readFileSync(filePath, 'utf-8');
     const parser = new Cadiy4Parser();
     const data = parser.parse(content);
@@ -387,7 +387,7 @@ describe('ModelBuilder', () => {
     expect((normalMat as any).wireframe).toBeFalsy();
 
     // 003.cadiy4 の dummy パーツ検証
-    const filePath = path.resolve(__dirname, '../../testdata/003.cadiy4');
+    const filePath = path.resolve(__dirname, '../data/003.cadiy4');
     const content = fs.readFileSync(filePath, 'utf-8');
     const parser = new Cadiy4Parser();
     const data = parser.parse(content);

@@ -56,6 +56,7 @@
 | `snaps` | `array` | 任意 | スナップ機能の設定・拘束情報。通常は空配列 `[]`。 |
 | `cutList` | `object` | 任意 | 木取り図の計算パラメータおよび原木へのパーツ配置情報。 |
 | `polygonMeshTable` | `array` / `object` | 任意 | 既製パーツや3Dプリンタモデル等のポリゴン頂点・面定義テーブル（配列またはオブジェクト辞書）。 |
+| `paint` | `object` | 任意 | 塗料・仕上げ設定のスナップショット（`snapshot.paints` 配下に各塗料の定義を保持）。 |
 
 ---
 
@@ -242,12 +243,32 @@ DIY特殊素材です。
 ```json
 [
   {
-    "meshId": "大人170cm|1006.7 x 1700 x 78|Doll Model/Adult 170cm.dmesh",
-    "vertices": [ 0.12, 1.70, ... ],
-    "faces": [ 0, 1, 2, ... ]
+    "meshId": "羽子板付 沓石 240|230 x 240 x 230|Concrete/Base-Stone With Paddle 240.dmesh",
+    "vertices": [
+      { "x": -5.4432, "y": 11.1263, "z": 6.3432 },
+      { "x": 5.4432, "y": 11.1263, "z": 6.3432 }
+    ],
+    "faces": [
+      {
+        "indices": [ 4, 1, 2, 7 ],
+        "vertexNormals": [
+          { "x": 0, "y": 1, "z": 0 },
+          { "x": 0, "y": 1, "z": 0 }
+        ]
+      },
+      {
+        "indices": [ 0, 1, 2 ]
+      }
+    ]
   }
 ]
 ```
+
+- `meshId`: メッシュ識別文字列（モデル名、外形寸法、dmeshファイルパス等で構成）。`objects[*].meshRef` と紐づきます。
+- `vertices`: 頂点座標の配列（`Vector3[]` 形式。旧仕様・エクスポート形式ではフラットな数値配列 `number[]` も許容）。
+- `faces`: 面ポリゴン情報オブジェクトの配列（`PolygonMeshFace[]` 形式）。
+  - `indices`: 面を構成する頂点インデックスの配列（三角形だけでなく四角形や多角形を含む）。
+  - `vertexNormals`（任意）: 各頂点の法線ベクトル配列（`Vector3[]`）。
 
 ### オブジェクト辞書形式:
 ```json

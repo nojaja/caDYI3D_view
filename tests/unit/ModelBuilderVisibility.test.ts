@@ -8,7 +8,7 @@ import * as path from 'path';
 
 describe('ModelBuilder & LayerManager - 初期可視性と描画制御', () => {
   it('初期非表示レイヤー・親非表示レイヤー・個別非表示のオブジェクトが初期構築時点で visible: false となること', () => {
-    const testDataPath = path.resolve(__dirname, '../../testdata/nested_layers_test.cadiy4');
+    const testDataPath = path.resolve(__dirname, '../data/nested_layers_test.cadiy4');
     const testModelData: Cadiy4Data = JSON.parse(fs.readFileSync(testDataPath, 'utf-8'));
 
     const layerManager = new LayerManager();

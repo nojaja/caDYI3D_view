@@ -1,0 +1,140 @@
+{
+  "version": 4,
+  "camera": {
+    "position": { "x": -3.0, "y": 2.0, "z": 5.0 },
+    "target": { "x": 0.0, "y": 1.0, "z": 0.0 }
+  },
+  "layers": [
+    {
+      "id": 0,
+      "name": "建物ルート",
+      "visible": true,
+      "locked": false,
+      "color": { "r": 0.3, "g": 0.5, "b": 1 },
+      "colorMode": false,
+      "parentId": null
+    },
+    {
+      "id": 1,
+      "name": "基礎柱&根太",
+      "visible": true,
+      "locked": false,
+      "color": { "r": 0.3, "g": 0.5, "b": 1 },
+      "colorMode": false,
+      "parentId": 0
+    },
+    {
+      "id": 10,
+      "name": "基礎金具",
+      "visible": true,
+      "locked": false,
+      "color": { "r": 0.5, "g": 0.8, "b": 0.5 },
+      "colorMode": false,
+      "parentId": 1
+    },
+    {
+      "id": 6,
+      "name": "内壁-天井",
+      "visible": false,
+      "locked": false,
+      "color": { "r": 0.3, "g": 0.5, "b": 1 },
+      "colorMode": false,
+      "parentId": 0
+    },
+    {
+      "id": 60,
+      "name": "天井下地",
+      "visible": true,
+      "locked": false,
+      "color": { "r": 0.8, "g": 0.3, "b": 0.3 },
+      "colorMode": false,
+      "parentId": 6
+    },
+    {
+      "id": 99,
+      "name": "独立ルートフォルダ",
+      "visible": true,
+      "locked": false,
+      "color": { "r": 0.9, "g": 0.9, "b": 0.2 },
+      "colorMode": false,
+      "parentId": null
+    }
+  ],
+  "objects": [
+    {
+      "id": "legacy-1102",
+      "name": "コンクリート平板",
+      "position": { "x": 1.72, "y": 0.02, "z": 1.70 },
+      "quaternion": { "x": 0, "y": 0.7071068, "z": 0, "w": 0.7071068 },
+      "size": { "x": 0.3, "y": 0.04, "z": 0.33 },
+      "visible": true,
+      "locked": false,
+      "groupId": 0,
+      "layerId": 1,
+      "color": { "r": 0.9, "g": 0.9, "b": 0.9 },
+      "type": "board",
+      "unitPrice": 398,
+      "specificGravity": 0.005
+    },
+    {
+      "id": "obj-grandchild-visible",
+      "name": "基礎ボルト",
+      "position": { "x": 1.5, "y": 0.05, "z": 1.5 },
+      "quaternion": { "x": 0, "y": 0, "z": 0, "w": 1 },
+      "size": { "x": 0.05, "y": 0.1, "z": 0.05 },
+      "visible": true,
+      "locked": false,
+      "groupId": 0,
+      "layerId": 10,
+      "color": { "r": 0.7, "g": 0.7, "b": 0.7 },
+      "type": "board",
+      "unitPrice": 120,
+      "specificGravity": 7.8
+    },
+    {
+      "id": "legacy-1498",
+      "name": "OSB合板",
+      "position": { "x": 1.33, "y": 3.01, "z": 1.01 },
+      "quaternion": { "x": 0, "y": 0, "z": 0.1, "w": -0.99 },
+      "size": { "x": 0.78, "y": 0.01, "z": 1.44 },
+      "visible": true,
+      "locked": false,
+      "groupId": 0,
+      "layerId": 6,
+      "color": { "r": 1, "g": 1, "b": 0.8 },
+      "type": "board",
+      "unitPrice": 1880,
+      "specificGravity": 0.5
+    },
+    {
+      "id": "obj-grandchild-cascade-hidden",
+      "name": "野縁",
+      "position": { "x": 1.0, "y": 2.8, "z": 1.0 },
+      "quaternion": { "x": 0, "y": 0, "z": 0, "w": 1 },
+      "size": { "x": 0.04, "y": 0.03, "z": 2.0 },
+      "visible": true,
+      "locked": false,
+      "groupId": 0,
+      "layerId": 60,
+      "color": { "r": 0.8, "g": 0.6, "b": 0.4 },
+      "type": "lumber",
+      "unitPrice": 450,
+      "specificGravity": 0.45
+    },
+    {
+      "id": "obj-direct-hidden",
+      "name": "非表示オブジェクト",
+      "position": { "x": 0, "y": 0, "z": 0 },
+      "quaternion": { "x": 0, "y": 0, "z": 0, "w": 1 },
+      "size": { "x": 0.1, "y": 0.1, "z": 0.1 },
+      "visible": false,
+      "locked": false,
+      "groupId": 0,
+      "layerId": 1,
+      "color": { "r": 1, "g": 0, "b": 0 },
+      "type": "board"
+    }
+  ],
+  "snaps": [],
+  "cutList": { "layouts": [], "cutWidthMm": 3 }
+}

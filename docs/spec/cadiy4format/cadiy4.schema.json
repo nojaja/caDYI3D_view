@@ -87,6 +87,15 @@
           }
         }
       ]
+    },
+    "paint": {
+      "type": "object",
+      "description": "Paint and finish configuration snapshot.",
+      "properties": {
+        "snapshot": {
+          "$ref": "#/definitions/PaintSnapshot"
+        }
+      }
     }
   },
   "definitions": {
@@ -319,6 +328,23 @@
         }
       }
     },
+    "PolygonMeshFace": {
+      "type": "object",
+      "description": "Polygon face topology structure defining vertex indices and optional vertex normals.",
+      "required": ["indices"],
+      "properties": {
+        "indices": {
+          "type": "array",
+          "description": "Vertex index list forming the polygon face (triangles, quads, n-gons).",
+          "items": { "type": "integer" }
+        },
+        "vertexNormals": {
+          "type": "array",
+          "description": "Optional list of normal vectors per vertex index.",
+          "items": { "$ref": "#/definitions/Vector3" }
+        }
+      }
+    },
     "PolygonMeshItem": {
       "type": "object",
       "description": "Polygon mesh table item containing mesh geometry definition with its identifier.",
@@ -330,13 +356,23 @@
         },
         "vertices": {
           "type": "array",
-          "description": "Flat array of vertex coordinate components [x0, y0, z0, x1, y1, z1, ...].",
-          "items": { "type": "number" }
+          "description": "Array of vertex coordinates (list of Vector3 objects or flat numbers).",
+          "items": {
+            "oneOf": [
+              { "$ref": "#/definitions/Vector3" },
+              { "type": "number" }
+            ]
+          }
         },
         "faces": {
           "type": "array",
-          "description": "Flat array of triangle vertex index triplets [i0, j0, k0, i1, j1, k1, ...].",
-          "items": { "type": "integer" }
+          "description": "Array of polygon face structures (PolygonMeshFace) or flat index triplets.",
+          "items": {
+            "oneOf": [
+              { "$ref": "#/definitions/PolygonMeshFace" },
+              { "type": "integer" }
+            ]
+          }
         }
       }
     },
@@ -346,12 +382,51 @@
       "properties": {
         "vertices": {
           "type": "array",
-          "items": { "type": "number" }
+          "description": "Array of vertex coordinates (list of Vector3 objects or flat numbers).",
+          "items": {
+            "oneOf": [
+              { "$ref": "#/definitions/Vector3" },
+              { "type": "number" }
+            ]
+          }
         },
         "faces": {
           "type": "array",
-          "items": { "type": "integer" }
+          "description": "Array of polygon face structures (PolygonMeshFace) or flat index triplets.",
+          "items": {
+            "oneOf": [
+              { "$ref": "#/definitions/PolygonMeshFace" },
+              { "type": "integer" }
+            ]
+          }
         }
+      }
+    },
+    "PaintItem": {
+      "type": "object",
+      "description": "Paint definition specifying color, finish, and metadata.",
+      "required": ["id", "name", "color"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "color": { "$ref": "#/definitions/ColorRGB" },
+        "finish": { "type": "string" },
+        "specs": { "type": "array" }
+      }
+    },
+    "PaintSnapshot": {
+      "type": "object",
+      "description": "Snapshot container of custom or preset paint configurations.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "isPreset": { "type": "boolean" },
+        "paints": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/PaintItem" }
+        },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
       }
     },
     "SceneObject": {
@@ -404,6 +479,10 @@
           "type": "integer",
           "description": "Texture index (0: flat color, 1: wood grain lumber, 2: wood grain board, etc.).",
           "default": 0
+        },
+        "defaultPaintId": {
+          "type": "string",
+          "description": "ID reference to paint definition in paint.snapshot.paints."
         },
         "displayId": {
           "type": "integer",
