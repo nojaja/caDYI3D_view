@@ -57,4 +57,24 @@ describe('ModelLoader', () => {
       expect(data.layers.length).toBeGreaterThan(0);
     }
   });
+
+  it('実際の 009.cadiy を読み込んで polygonMeshTable と polygon オブジェクトが正しく得られメッシュ生成できること', () => {
+    const cadiyPath = path.resolve(__dirname, '../data/009.cadiy');
+    expect(fs.existsSync(cadiyPath)).toBe(true);
+
+    const xml = fs.readFileSync(cadiyPath, 'utf-8');
+    const data = loader.load(xml, '009');
+
+    expect(data.polygonMeshTable).toBeDefined();
+    const meshTable = Array.isArray(data.polygonMeshTable) ? data.polygonMeshTable : [];
+    expect(meshTable.length).toBe(4);
+
+    const polyObjects = data.objects.filter((o) => o.type === 'polygon');
+    expect(polyObjects.length).toBe(59);
+
+    // _2xBoolean 由来のオブジェクトがメッシュテーブルを参照できていること
+    const clamp = polyObjects.find((o) => o.name === '単管自在クランプ');
+    expect(clamp).toBeDefined();
+    expect((clamp as any).meshRef).toBe('1');
+  });
 });

@@ -233,3 +233,37 @@ node .agents/skills/cadiy4-schema-extractor/scripts/validate-schema.js testdata/
 # -> Validation PASSED! (7 objects checked, 0 errors)
 ```
 更新されたスキーマ `docs/spec/cadiy4format/cadiy4.schema.json` に対して 100% 適合することを確認済みです。
+
+---
+
+## 6. ポリゴンパーツ (`type: "polygon"`) および `polygonMeshTable` 仕様
+
+既製金物（沓石、各種単管クランプ、サドルバンド、蝶番等）やカスタム3Dモデルの幾何データ仕様です。
+
+```json
+{
+  "type": "polygon",
+  "name": "羽子板付 沓石 240",
+  "position": { "x": 2.564, "y": 0.12, "z": 1.709 },
+  "quaternion": { "x": 0, "y": 1, "z": 0, "w": 0 },
+  "size": { "x": 0.23, "y": 0.24, "z": 0.23 },
+  "meshRef": "羽子板付 沓石 240|230 x 240 x 230|Concrete/Base-Stone With Paddle 240.dmesh"
+}
+```
+
+### 6.1 頂点座標系と単位スケール (`SCALE = 0.01`)
+- **単位**: caDYI3D の `.dmesh` / `polygonMeshTable` の頂点座標は **センチメートル [cm]** 単位で格納されています。
+- **メートル換算**: Three.js 等のメートル単位系シーンに配置する際は、各頂点座標 $(x, y, z)$ に **$0.01$** を乗算します。
+  - 例: `羽子板付 沓石 240` の頂点 $y$ 座標は $-12.0\text{cm} \sim +12.0\text{cm}$（コンクリート部全高 $24\text{cm} = 0.24\text{m}$）および $+20.5\text{cm}$（金具突出部全高 $32.5\text{cm} = 0.325\text{m}$）。
+  - 中心位置 `position.y = 0.12m` に配置されると、底面が床面 $y = 0.0\text{m}$ に正確に接地し、コンクリート上面が $y = 0.24\text{m}$ となって束柱（ヒノキ）の下面と完全密着します。
+
+### 6.2 面構成 (`faces`) と三角形分割 (Triangulation)
+- 面は頂点インデックスの配列 `indices`（反時計回り CCW = 外向き法線）で定義されます。
+  - 3頂点面（三角形）: そのまま1個の三角形 `[i0, i1, i2]`。
+  - 4頂点面（四角形）: 2個の三角形 `[i0, i1, i2]` および `[i0, i2, i3]` に分割。
+  - 多角形面（n-gon）: 三角形ファン分割 `[i0, i1, i2]`, `[i0, i2, i3]`, ..., `[i0, ik-1, ik]`。
+
+### 6.3 頂点法線 (`vertexNormals`)
+- 面情報に `vertexNormals`（単位法線ベクトル配列）が含まれる場合、それを利用して曲面のスムーズシェーディング（単管クランプのパイプ接触曲面等）を忠実に再現します。
+- 法線が含まれないフラット面（沓石等）は、Three.js の `computeVertexNormals()` により法線を自動算定します。
+

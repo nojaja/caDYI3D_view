@@ -447,7 +447,7 @@ export class LegacyToV4Converter {
           ...base,
           type: 'polygon',
           modelName: item.ModelName ? String(item.ModelName).replace(/\\/g, '/') : '',
-          meshRef: item.CommentText || item.ModelName || 'polygon',
+          meshRef: item.MeshInfoID ? String(item.MeshInfoID) : (item.CommentText || item.ModelName || 'polygon'),
         };
         return poly;
       }
@@ -658,20 +658,72 @@ export class LegacyToV4Converter {
     for (const info of list) {
       try {
         const id = parseInt(info.BooleanMeshInfoID || '0', 10);
+        const meshId = String(info.BooleanMeshInfoID || id);
         if (!info.MeshVertex) continue;
 
         // "x,y,z/x,y,z/..."
+        // 旧XMLの頂点座標はメートル [m] 単位のため、V4内部仕様に合わせて 100倍してセンチメートル [cm] に変換する
         const vertexTokens = info.MeshVertex.split('/');
         const vertices: Vector3[] = [];
         for (const token of vertexTokens) {
           if (!token.trim()) continue;
-          vertices.push(this.parseVector3(token));
+          const v = this.parseVector3(token);
+          vertices.push({
+            x: v.x * 100,
+            y: v.y * 100,
+            z: v.z * 100,
+          });
+        }
+
+        // 面情報 (MeshFaceInfo / FInfo) のパース
+        // 書式: 頂点数#スムーズフラグ#マテリアルID#頂点インデックス#エッジフラグ#頂点法線#面法線
+        const faces: any[] = [];
+        if (info.MeshFaceInfo) {
+          const rawFaceList = Array.isArray(info.MeshFaceInfo) ? info.MeshFaceInfo : [info.MeshFaceInfo];
+          for (const item of rawFaceList) {
+            const finfoStr = typeof item === 'string' ? item : item?.FInfo;
+            if (!finfoStr || typeof finfoStr !== 'string') continue;
+
+            const parts = finfoStr.split('#');
+            if (parts.length >= 4) {
+              const idxStr = parts[3];
+              const indices = idxStr
+                .split(',')
+                .map((s) => parseInt(s.trim(), 10))
+                .filter((n) => !isNaN(n));
+
+              if (indices.length >= 3) {
+                let vertexNormals: Vector3[] | undefined;
+                if (parts.length >= 6 && parts[5] && parts[5] !== 'null') {
+                  const normTokens = parts[5].split('/');
+                  const parsedNorms: Vector3[] = [];
+                  for (const nt of normTokens) {
+                    if (!nt.trim()) continue;
+                    try {
+                      parsedNorms.push(this.parseVector3(nt));
+                    } catch {
+                      // 無効な法線はスキップ
+                    }
+                  }
+                  if (parsedNorms.length === indices.length) {
+                    vertexNormals = parsedNorms;
+                  }
+                }
+
+                faces.push({
+                  indices,
+                  ...(vertexNormals ? { vertexNormals } : {}),
+                });
+              }
+            }
+          }
         }
 
         table.push({
+          meshId,
           id,
           vertices,
-          faces: [], // 簡易表示用
+          faces,
         });
       } catch (err: any) {
         console.log(`[LegacyConverter] 変換失敗: [BooleanMeshInfo(ID=${info?.BooleanMeshInfoID})] メッシュ変換エラー: ${err.message}`, {

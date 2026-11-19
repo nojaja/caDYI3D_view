@@ -369,20 +369,29 @@ export class ViewerUI {
   }
 
   /**
+   * 木取り図に表示する寸法・サイズ数値をフォーマットする
+   * 有効桁数は小数点第2位まで（toFixed(2)）
+   */
+  public static formatCutPlanSize(val: number): string {
+    return val.toFixed(2);
+  }
+
+  /**
    * 部材のラベル情報（部材名・サイズ文字列）を共通取得する
    * class="cutplan-part-size" には「寸法:」等の接頭辞や単位「mm」を含めず数値のみを返す
+   * 有効桁数は小数点第2位まで
    */
   public static getPartLabelInfo(item: CutPlanItem, is2D: boolean = false): { partName: string; sizeText: string } {
     const partName = item.object.partName || item.object.name;
     const sizeText = is2D
-      ? `${item.widthMm.toFixed(0)} × ${item.lengthMm.toFixed(0)}`
-      : `${item.lengthMm.toFixed(0)}`;
+      ? `${ViewerUI.formatCutPlanSize(item.widthMm)} × ${ViewerUI.formatCutPlanSize(item.lengthMm)}`
+      : `${ViewerUI.formatCutPlanSize(item.lengthMm)}`;
     return { partName, sizeText };
   }
 
   /**
    * 斜めカットのラベルSVG要素を生成する
-   * 斜め線と同じ角度で回転し、単位 mm なしで描画する
+   * 斜め線と同じ角度で回転し、単位 mm なしで描画する（有効桁数: 小数点第2位）
    */
   public static renderDiagonalCutLabel(
     x1: number,
@@ -407,7 +416,7 @@ export class ViewerUI {
     // 上側コーナーは線の外側(上)に-0.4em、下側コーナーは線の外側(下)に1.2emオフセット
     const dyAttr = isTopCorner ? '-0.4em' : '1.2em';
 
-    return `<text x="${midX.toFixed(1)}" y="${midY.toFixed(1)}" transform="rotate(${angleDeg.toFixed(1)}, ${midX.toFixed(1)}, ${midY.toFixed(1)})" dy="${dyAttr}" class="cutplan-diag-cut-label" font-size="${fsText}" font-weight="bold" fill="#b91c1c" text-anchor="middle">✂ 斜めカット: ${cutA.toFixed(1)} × ${cutB.toFixed(1)}</text>`;
+    return `<text x="${midX.toFixed(1)}" y="${midY.toFixed(1)}" transform="rotate(${angleDeg.toFixed(1)}, ${midX.toFixed(1)}, ${midY.toFixed(1)})" dy="${dyAttr}" class="cutplan-diag-cut-label" font-size="${fsText}" font-weight="bold" fill="#b91c1c" text-anchor="middle">✂ 斜めカット: ${ViewerUI.formatCutPlanSize(cutA)} × ${ViewerUI.formatCutPlanSize(cutB)}</text>`;
   }
 
   /**
@@ -594,7 +603,7 @@ export class ViewerUI {
         if (scrapWidth >= 50 * scale) {
           svgInner += `
             <text x="${cutX + scrapWidth / 2}" y="${py + ph / 2}" class="cutplan-scrap-label" font-size="${fsText}" font-weight="600" fill="#94a3b8" text-anchor="middle" dominant-baseline="middle">
-              端材 (${scrapWidth.toFixed(0)})
+              端材 (${ViewerUI.formatCutPlanSize(scrapWidth)})
             </text>
           `;
         }
@@ -700,7 +709,7 @@ export class ViewerUI {
       const remWidth = boardWidth - curX;
       svgInner += `
         <rect x="${curX}" y="0" width="${remWidth}" height="${boardHeight}" fill="url(#scrap-hatch-${sheet.baseId})" stroke="#cbd5e1" stroke-width="1.5" rx="0" class="cutplan-remaining-block" />
-        <text x="${curX + remWidth / 2}" y="${boardHeight / 2}" class="cutplan-scrap-label" font-size="${fsText}" font-weight="600" fill="#64748b" text-anchor="middle" dominant-baseline="middle">端材 (${sheet.remainingLengthMm.toFixed(0)})</text>
+        <text x="${curX + remWidth / 2}" y="${boardHeight / 2}" class="cutplan-scrap-label" font-size="${fsText}" font-weight="600" fill="#64748b" text-anchor="middle" dominant-baseline="middle">端材 (${ViewerUI.formatCutPlanSize(sheet.remainingLengthMm)})</text>
       `;
     }
 

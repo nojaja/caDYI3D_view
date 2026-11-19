@@ -229,11 +229,15 @@
 旧バージョンのメッシュ定義は、スラッシュ区切り・カンマ区切りのテキスト形式です。
 
 - `MeshVertex`: `"x,y,z/x,y,z/..."`
-  - V4 の `polygonMeshTable.vertices`: `[{ x, y, z }, ...]`
-  - ※ 座標スケールは メートル [m] から センチメートル [cm] または ミリメートル [mm] への変換に注意（`0.12` -> `12`）。
+  - 旧XMLでは単位は **メートル [m]** です。
+  - V4 の `polygonMeshTable.vertices`: `[{ x, y, z }, ...]`（※ V4 内部データは **センチメートル [cm]** 単位のため、各成分に `100` を乗算して格納します）。
 - `MeshFaceInfo`: 面定義
-  - 形式: `頂点数#Smooth#MaterialID#頂点インデックス#...`
-  - V4 の `polygonMeshTable.faces`: `[{ a, b, c }, ...]`
+  - 形式: `頂点数#Smooth#MaterialID#頂点インデックス#エッジフラグ#頂点法線#面法線`
+    - 例: `3#True#1#0,1,2#2,2,1#0.9799604,-0.007948555,-0.1990334/0.9995764,0.003448055,-0.02890001/0.994722,-0.01164163,0.1019442#0.9973274,-0.02186139,-0.06971414`
+  - V4 の `polygonMeshTable.faces`: `[{ indices: [0, 1, 2], vertexNormals: [{x, y, z}, ...] }, ...]`
+- メッシュ識別子 (`meshId` / `meshRef`):
+  - `_2xBoolean.MeshInfoID` (例: `"1"`) が `BooleanMeshInfo.BooleanMeshInfoID` (`"1"`) と紐づく。
+  - V4 変換時、`meshId` に `"1"`（またはパーツ名/サイズ）を付与し、オブジェクト側の `meshRef` を同一キーに設定することで、`PolygonBuilder` が確実に解決できるように連携する。
 
 ---
 

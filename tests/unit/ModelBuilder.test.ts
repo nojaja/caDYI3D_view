@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
 import { ModelBuilder } from '../../src/builder/ModelBuilder';
 import { Cadiy4Parser } from '../../src/loader/Cadiy4Parser';
+import { ModelLoader } from '../../src/loader/ModelLoader';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -557,5 +558,93 @@ describe('ModelBuilder', () => {
     const backVerts = bWorldVerts.filter(v => v.z < -0.059);
     const backWidth = Math.max(...backVerts.map(v => v.x)) - Math.min(...backVerts.map(v => v.x));
     expect(backWidth).toBeCloseTo(0.40, 2);
+  });
+
+  it('009.cadiy4 の polygon オブジェクトが polygonMeshTable を参照して正しくメッシュ生成されること', () => {
+    const filePath = path.resolve(__dirname, '../data/009.cadiy4');
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const parser = new Cadiy4Parser();
+    const data = parser.parse(content);
+
+    const builder = new ModelBuilder();
+    const group = builder.build(data.objects, undefined, data.pictureImageTable, data.polygonMeshTable);
+
+    const polyObjects = data.objects.filter(o => o.type === 'polygon');
+    expect(polyObjects.length).toBe(59);
+
+    // 59個すべてのポリゴンオブジェクトについて検証
+    for (const polyObj of polyObjects) {
+      const mesh = group.children.find(c => c.userData.id === polyObj.id) as THREE.Mesh;
+      expect(mesh).toBeDefined();
+      expect(mesh).toBeInstanceOf(THREE.Mesh);
+
+      // 単なる BoxGeometry (8頂点) ではなく、実際のポリゴンデータから生成されていること
+      const posAttr = mesh.geometry.attributes.position;
+      expect(posAttr).toBeDefined();
+      expect(posAttr.count).toBeGreaterThan(8);
+
+      // position / quaternion が反映されていること
+      expect(mesh.position.x).toBeCloseTo(polyObj.position.x);
+      expect(mesh.position.y).toBeCloseTo(polyObj.position.y);
+      expect(mesh.position.z).toBeCloseTo(polyObj.position.z);
+
+      // エッジ線 (LineSegments) が追加されていること
+      const lineSegments = mesh.children.find(c => c instanceof THREE.LineSegments);
+      expect(lineSegments).toBeDefined();
+    }
+  });
+
+  it('旧形式 009.cadiy の polygon オブジェクト (_2xBoolean) が変換後の polygonMeshTable を参照して正しくメッシュ生成されること', () => {
+    const filePath = path.resolve(__dirname, '../data/009.cadiy');
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const loader = new ModelLoader();
+    const data = loader.load(content, '009');
+
+    const builder = new ModelBuilder();
+    const group = builder.build(data.objects, undefined, data.pictureImageTable, data.polygonMeshTable);
+
+    // _2xBoolean 由来の polygon オブジェクト (51個)
+    const booleanPolyObjects = data.objects.filter(o => o.type === 'polygon' && (o as any).meshRef !== '羽子板付 沓石 240');
+    expect(booleanPolyObjects.length).toBe(51);
+
+    for (const polyObj of booleanPolyObjects) {
+      const mesh = group.children.find(c => c.userData.id === polyObj.id) as THREE.Mesh;
+      expect(mesh).toBeDefined();
+      expect(mesh).toBeInstanceOf(THREE.Mesh);
+
+      // 実際のポリゴンデータ (頂点数 > 8)
+      const posAttr = mesh.geometry.attributes.position;
+      expect(posAttr).toBeDefined();
+      expect(posAttr.count).toBeGreaterThan(8);
+
+      // バウンディングボックスがパーツサイズ (例: クランプ 84.4mm x 53mm x 66.5mm) に近いこと
+      mesh.geometry.computeBoundingBox();
+      const bb = mesh.geometry.boundingBox!;
+      expect(bb.max.x - bb.min.x).toBeCloseTo(polyObj.size.x, 2);
+      expect(bb.max.y - bb.min.y).toBeCloseTo(polyObj.size.y, 2);
+      expect(bb.max.z - bb.min.z).toBeCloseTo(polyObj.size.z, 2);
+
+      // エッジ線 (LineSegments) が追加されていること
+      const lineSegments = mesh.children.find(c => c instanceof THREE.LineSegments);
+      expect(lineSegments).toBeDefined();
+    }
+
+    // 沓石 (8個) は標準プリセットメッシュにより、009.cadiy4 と全く同様に精密な沓石形状 (dx ≈ 0.23m, dy ≈ 0.325m, dz ≈ 0.23m) として生成されること
+    const katsuishiObjects = data.objects.filter(o => o.type === 'polygon' && o.name === '羽子板付 沓石 240');
+    expect(katsuishiObjects.length).toBe(8);
+    for (const katsu of katsuishiObjects) {
+      const mesh = group.children.find(c => c.userData.id === katsu.id) as THREE.Mesh;
+      expect(mesh).toBeDefined();
+
+      // 単なる BoxGeometry (36頂点以下) ではなく、実際の沓石メッシュ (76面 * 3 = 228頂点) であること
+      const posAttr = mesh.geometry.attributes.position;
+      expect(posAttr.count).toBeGreaterThan(36);
+
+      mesh.geometry.computeBoundingBox();
+      const bb = mesh.geometry.boundingBox!;
+      expect(bb.max.x - bb.min.x).toBeCloseTo(0.23, 2);
+      expect(bb.max.z - bb.min.z).toBeCloseTo(0.23, 2);
+      expect(bb.max.y - bb.min.y).toBeCloseTo(0.325, 2); // 金具含む全高
+    }
   });
 });

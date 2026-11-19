@@ -127,7 +127,12 @@ export class Viewer {
     }
 
     // 新モデルの構築
-    this.currentModelGroup = this.modelBuilder.build(data.objects, isObjectVisible, data.pictureImageTable);
+    this.currentModelGroup = this.modelBuilder.build(
+      data.objects,
+      isObjectVisible,
+      data.pictureImageTable,
+      data.polygonMeshTable
+    );
     this.scene.add(this.currentModelGroup);
 
     // カメラ同期

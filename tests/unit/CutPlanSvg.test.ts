@@ -91,9 +91,9 @@ describe('ViewerUI - 材料取り図(木取り図) SVG描画ロジック', () =>
     expect(sheet9).toBeDefined();
     const svg9 = ViewerUI.render2DSheetSvg(sheet9);
 
-    // 斜めカット01: 斜め木取り線 (実線、赤い指示線)
-    expect(svg9).toContain('✂ 斜めカット: 809.0 × 172.0');
-    expect(svg9).not.toContain('✂ 斜めカット: 809.0 × 172.0mm');
+    // 斜めカット01: 斜め木取り線 (実線、赤い指示線、有効桁数: 小数点第2位)
+    expect(svg9).toContain('✂ 斜めカット: 809.00 × 171.96');
+    expect(svg9).not.toContain('✂ 斜めカット: 809.00 × 171.96mm');
     // 斜めカットが斜め線と同じ角度で回転(transform="rotate(...)")して描画されていること
     expect(svg9).toContain('class="cutplan-diag-cut-label"');
     expect(svg9).toMatch(/transform="rotate\([\d.-]+,\s*[\d.-]+,\s*[\d.-]+\)"/);
@@ -122,9 +122,9 @@ describe('ViewerUI - 材料取り図(木取り図) SVG描画ロジック', () =>
     expect(sheet10).toBeDefined();
     const svg10 = ViewerUI.render2DSheetSvg(sheet10);
 
-    // 斜めカット02: 斜め木取り線
-    expect(svg10).toContain('✂ 斜めカット: 612.3 × 130.2');
-    expect(svg10).not.toContain('✂ 斜めカット: 612.3 × 130.2mm');
+    // 斜めカット02: 斜め木取り線 (有効桁数: 小数点第2位)
+    expect(svg10).toContain('✂ 斜めカット: 612.33 × 130.15');
+    expect(svg10).not.toContain('✂ 斜めカット: 612.33 × 130.15mm');
     expect(svg10).toContain('class="cutplan-diag-cut-label"');
     expect(svg10).toMatch(/transform="rotate\([\d.-]+,\s*[\d.-]+,\s*[\d.-]+\)"/);
     expect(svg10).not.toContain('✂ 木取り線');
@@ -160,7 +160,7 @@ describe('ViewerUI - 材料取り図(木取り図) SVG描画ロジック', () =>
     expect(svg).not.toContain('rx="4"');
   });
 
-  it('getPartLabelInfo でパーツラベルとサイズの取得処理が共通化され、サイズのみ表記(単位mmなし、「寸法:」プレフィックスなし)となること', () => {
+  it('getPartLabelInfo でパーツラベルとサイズの取得処理が共通化され、サイズのみ表記(単位mmなし、「寸法:」プレフィックスなし)となり、有効桁数は小数点第2位までとなること', () => {
     const dummyItem: any = {
       object: { name: 'テスト部材', partName: '側板' },
       widthMm: 120,
@@ -170,16 +170,28 @@ describe('ViewerUI - 材料取り図(木取り図) SVG描画ロジック', () =>
     // 1D用
     const label1D = ViewerUI.getPartLabelInfo(dummyItem, false);
     expect(label1D.partName).toBe('側板');
-    expect(label1D.sizeText).toBe('900');
+    expect(label1D.sizeText).toBe('900.00');
     expect(label1D.sizeText).not.toContain('mm');
     expect(label1D.sizeText).not.toContain('寸法:');
 
     // 2D用
     const label2D = ViewerUI.getPartLabelInfo(dummyItem, true);
     expect(label2D.partName).toBe('側板');
-    expect(label2D.sizeText).toBe('120 × 900');
+    expect(label2D.sizeText).toBe('120.00 × 900.00');
     expect(label2D.sizeText).not.toContain('mm');
     expect(label2D.sizeText).not.toContain('寸法:');
+
+    // 小数部を持つ部材 (端数あり) の四捨五入およびフォーマット検証
+    const fractionalItem: any = {
+      object: { name: '斜め部材', partName: '筋交い' },
+      widthMm: 89.126,
+      lengthMm: 1720.904,
+    };
+    const labelFractional1D = ViewerUI.getPartLabelInfo(fractionalItem, false);
+    expect(labelFractional1D.sizeText).toBe('1720.90');
+
+    const labelFractional2D = ViewerUI.getPartLabelInfo(fractionalItem, true);
+    expect(labelFractional2D.sizeText).toBe('89.13 × 1720.90');
   });
 
   it('2D合板シートのSVGで cutplan-part-size に「寸法:」および「mm」が含まれず、サイズ数値のみ表記されること', () => {

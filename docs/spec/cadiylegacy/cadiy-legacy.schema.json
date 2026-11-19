@@ -193,14 +193,41 @@
     },
     "BooleanMeshInfo": {
       "type": "object",
+      "description": "旧形式におけるブーリアン・ポリゴンメッシュ幾何データ定義コンテナ。頂点群と面リストを保持する。",
       "required": ["BooleanMeshInfoID", "MeshVertex"],
       "properties": {
-        "BooleanMeshInfoID": { "type": "string" },
-        "MeshVertex": { "type": "string", "description": "頂点リスト x,y,z/x,y,z/..." },
+        "BooleanMeshInfoID": {
+          "type": "string",
+          "description": "メッシュの一意な識別ID (1, 2, ...)。_2xBoolean.MeshInfoID と紐づく。"
+        },
+        "MeshVertex": {
+          "type": "string",
+          "description": "頂点座標リスト。形式: 'x,y,z/x,y,z/...'。単位はメートル [m]（※V4 の polygonMeshTable は cm 単位のため変換時に 100 倍が必要）。"
+        },
         "MeshFaceInfo": {
+          "description": "面定義コンテナまたはその配列。FInfo を含む。",
           "oneOf": [
-            { "type": "object", "properties": { "FInfo": { "type": "string" } } },
-            { "type": "array", "items": { "type": "object", "properties": { "FInfo": { "type": "string" } } } }
+            {
+              "type": "object",
+              "properties": {
+                "FInfo": {
+                  "type": "string",
+                  "description": "面トポロジおよび法線情報文字列。'頂点数#スムーズフラグ#マテリアルID#頂点インデックス(0,1,2)#エッジフラグ#頂点法線(nx,ny,nz/...)#面法線(nx,ny,nz)'"
+                }
+              }
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "FInfo": {
+                    "type": "string",
+                    "description": "面トポロジおよび法線情報文字列。'頂点数#スムーズフラグ#マテリアルID#頂点インデックス(0,1,2)#エッジフラグ#頂点法線(nx,ny,nz/...)#面法線(nx,ny,nz)'"
+                  }
+                }
+              }
+            }
           ]
         }
       }
@@ -352,25 +379,61 @@
       ]
     },
     "LegacyPolygon": {
+      "type": "object",
+      "description": "外部3Dパーツ・金物（dmesh）。デスクトップアプリ側のライブラリから ModelName で指定された .dmesh ファイルを読み込む。",
       "allOf": [
         { "$ref": "#/definitions/CommonLegacyObject" },
         {
           "type": "object",
           "properties": {
-            "ModelName": { "type": "string" }
+            "ModelName": {
+              "type": "string",
+              "description": "外部 3D メッシュファイル相対パス (例: 'Concrete\\Base-Stone With Paddle 240.dmesh')"
+            }
           }
         }
       ]
     },
     "LegacyBoolean": {
+      "type": "object",
+      "description": "ブーリアン・加工部材または埋め込みポリゴンパーツ。OriginalModelType が 'eModelTypePolygon' の場合は金物パーツ等を表し、MeshInfoID で _2xBooleanMeshInfo を参照する。",
       "allOf": [
         { "$ref": "#/definitions/CommonLegacyObject" },
         {
           "type": "object",
           "properties": {
-            "MeshInfoID": { "type": "string" },
-            "OriginalModelType": { "type": "string" },
-            "FaceInfoList": { "type": "array" }
+            "MeshInfoID": {
+              "type": "string",
+              "description": "参照先 BooleanMeshInfo の BooleanMeshInfoID (例: '1')"
+            },
+            "OriginalModelType": {
+              "type": "string",
+              "description": "元のモデル種別。'eModelTypePolygon' の場合はポリゴンオブジェクトとして V4 に変換される。"
+            },
+            "SnapVertex": {
+              "type": "string",
+              "description": "スナップ用頂点リスト 'x,y,z/x,y,z/...'"
+            },
+            "FaceInfoList": {
+              "description": "部材のバウンディングボックス面や属性面リスト",
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "FInfo": { "type": "string" }
+                  }
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "FInfo": { "type": "string" }
+                    }
+                  }
+                }
+              ]
+            }
           }
         }
       ]

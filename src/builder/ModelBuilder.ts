@@ -1,10 +1,11 @@
 import * as THREE from 'three';
-import { CadiyObject, LumberObject, BoardObject, CylinderObject, DimensionObject, TextBoardObject, PictureObject, PictureImageItem, TubeObject, CommentObject } from '../types/cadiy4';
+import { CadiyObject, LumberObject, BoardObject, CylinderObject, DimensionObject, TextBoardObject, PictureObject, PictureImageItem, TubeObject, CommentObject, PolygonObject, PolygonMeshItem, PolygonMesh } from '../types/cadiy4';
 import { MaterialFactory } from './MaterialFactory';
 import { TextBoardBuilder } from './TextBoardBuilder';
 import { DimensionBuilder } from './DimensionBuilder';
 import { PictureBuilder } from './PictureBuilder';
 import { CommentBuilder } from './CommentBuilder';
+import { PolygonBuilder } from './PolygonBuilder';
 
 export class ModelBuilder {
   private materialFactory: MaterialFactory;
@@ -12,6 +13,7 @@ export class ModelBuilder {
   private dimensionBuilder: DimensionBuilder;
   private pictureBuilder: PictureBuilder;
   private commentBuilder: CommentBuilder;
+  private polygonBuilder: PolygonBuilder;
 
   constructor(materialFactory?: MaterialFactory) {
     this.materialFactory = materialFactory || new MaterialFactory();
@@ -19,6 +21,7 @@ export class ModelBuilder {
     this.dimensionBuilder = new DimensionBuilder();
     this.pictureBuilder = new PictureBuilder();
     this.commentBuilder = new CommentBuilder();
+    this.polygonBuilder = new PolygonBuilder();
   }
 
   /**
@@ -29,15 +32,26 @@ export class ModelBuilder {
   }
 
   /**
+   * ポリゴンメッシュテーブルをセットする
+   */
+  public setPolygonMeshTable(table?: PolygonMeshItem[] | Record<string, PolygonMesh>): void {
+    this.polygonBuilder.setPolygonMeshTable(table);
+  }
+
+  /**
    * オブジェクトリストからThree.jsのGroupを生成する
    */
   public build(
     objects: CadiyObject[],
     isObjectVisible?: (objectId: string) => boolean,
-    pictureImageTable?: PictureImageItem[]
+    pictureImageTable?: PictureImageItem[],
+    polygonMeshTable?: PolygonMeshItem[] | Record<string, PolygonMesh>
   ): THREE.Group {
     if (pictureImageTable) {
       this.setPictureImageTable(pictureImageTable);
+    }
+    if (polygonMeshTable) {
+      this.setPolygonMeshTable(polygonMeshTable);
     }
 
     const rootGroup = new THREE.Group();
@@ -105,6 +119,12 @@ export class ModelBuilder {
         break;
       case 'tube':
         geometry = this.createTubeGeometry(obj as TubeObject);
+        break;
+      case 'polygon':
+        geometry = this.polygonBuilder.buildGeometry(obj as PolygonObject);
+        if (!geometry) {
+          geometry = new THREE.BoxGeometry(obj.size.x, obj.size.y, obj.size.z);
+        }
         break;
       default:
         geometry = new THREE.BoxGeometry(obj.size.x, obj.size.y, obj.size.z);
@@ -419,5 +439,6 @@ export class ModelBuilder {
   public dispose(): void {
     this.materialFactory.dispose();
     this.pictureBuilder.dispose();
+    this.polygonBuilder.dispose();
   }
 }

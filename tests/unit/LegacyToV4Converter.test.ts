@@ -383,4 +383,68 @@ describe('LegacyToV4Converter', () => {
     expect(wave.thickness).toBe(0.00027);
     expect(wave.layerId).toBe(2); // 2番目のLayerID '10' が ID 2 にマッピング
   });
+
+  it('_2xBooleanMeshInfo から polygonMeshTable を頂点(cmスケール)と面(FInfo)を含めて正しく変換できること', () => {
+    const legacyProject: LegacyCadiyProject = {
+      _2xModel: {
+        Version: '7.0',
+        Camera: { Position: '0,0,0', Center: '0,0,0' },
+        _2xBooleanMeshInfo: {
+          _2xBooleanMeshInfo: [
+            {
+              BooleanMeshInfoID: '1',
+              // 0.1m, 0.2m, 0.3m -> 10cm, 20cm, 30cm
+              MeshVertex: '0.1,0.2,0.3/-0.1,-0.2,-0.3/0.5,0.5,0.5',
+              MeshFaceInfo: [
+                {
+                  FInfo: '3#True#1#0,1,2#2,2,1#0,1,0/0,1,0/0,1,0#0,1,0',
+                },
+              ] as any,
+            },
+          ],
+        },
+        _2xObject: {
+          _2xBoolean: [
+            {
+              UniqueID: '500',
+              CommentText: '単管自在クランプ',
+              Location: '1,2,3',
+              Quaternion: '0,0,0,1',
+              Size: '0.0844,0.053,0.0665',
+              OriginalModelType: 'eModelTypePolygon',
+              MeshInfoID: '1',
+            } as any,
+          ],
+        },
+      },
+    };
+
+    const v4 = converter.convert(legacyProject);
+
+    // polygonMeshTable の検証
+    expect(v4.polygonMeshTable).toBeDefined();
+    const table = Array.isArray(v4.polygonMeshTable) ? v4.polygonMeshTable : [];
+    expect(table).toHaveLength(1);
+
+    const mesh = table[0];
+    expect(mesh.meshId).toBe('1');
+    // 頂点スケール (m -> cm: * 100)
+    expect(mesh.vertices).toHaveLength(3);
+    expect((mesh.vertices[0] as any).x).toBeCloseTo(10);
+    expect((mesh.vertices[0] as any).y).toBeCloseTo(20);
+    expect((mesh.vertices[0] as any).z).toBeCloseTo(30);
+
+    // 面情報 (FInfo のパース)
+    expect(mesh.faces).toHaveLength(1);
+    const face = mesh.faces[0] as any;
+    expect(face.indices).toEqual([0, 1, 2]);
+    expect(face.vertexNormals).toHaveLength(3);
+    expect(face.vertexNormals[0]).toEqual({ x: 0, y: 1, z: 0 });
+
+    // オブジェクトの検証
+    const polyObj = v4.objects.find((o) => o.id === 'legacy-500');
+    expect(polyObj).toBeDefined();
+    expect(polyObj!.type).toBe('polygon');
+    expect((polyObj as any).meshRef).toBe('1');
+  });
 });
