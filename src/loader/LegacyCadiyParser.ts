@@ -87,7 +87,7 @@ export class LegacyCadiyParser {
 
         // 子要素がある場合は popped.obj、なければテキスト（無ければ空文字）
         const hasChildren = Object.keys(popped.obj).length > 0;
-        const val = hasChildren ? popped.obj : popped.text;
+        const val = hasChildren ? popped.obj : this.decodeXmlEntities(popped.text);
 
         const parent = stack[stack.length - 1];
         this.addChild(parent.obj, popped.tag, val);
@@ -95,6 +95,19 @@ export class LegacyCadiyParser {
     }
 
     return root;
+  }
+
+  /**
+   * XML実体参照 (&amp;, &lt;, &gt;, &quot;, &apos;) をデコードする
+   */
+  private decodeXmlEntities(str: string): string {
+    if (!str.includes('&')) return str;
+    return str
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'");
   }
 
   /**

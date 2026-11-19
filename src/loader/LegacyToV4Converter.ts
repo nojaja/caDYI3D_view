@@ -2,17 +2,28 @@ import {
   Cadiy4Data,
   CadiyObject,
   BoardObject,
+  LumberObject,
   DimensionObject,
   PolygonObject,
   ScrewObject,
   CylinderObject,
   PictureObject,
+  PictureImageItem,
+  TextBoardObject,
+  CommentObject,
+  WaveBoardObject,
+  SteelProfileObject,
+  TubeObject,
   Vector3,
   Quaternion,
   ColorRGB,
+  ColorRGBA,
   LayerData,
   CutLayoutItem,
   CutListData,
+  EdgeCut,
+  PaintItem,
+  PaintSnapshot,
 } from '../types/cadiy4';
 import {
   LegacyCadiyProject,
@@ -21,6 +32,8 @@ import {
   LegacyCutListPartsBase,
   LegacyCutPartItem,
   LegacyBooleanMeshInfo,
+  LegacyPaint,
+  LegacyPainting,
 } from '../types/cadiy-legacy';
 
 /**
@@ -38,19 +51,24 @@ export class LegacyToV4Converter {
     const camera = this.convertCamera(model.Camera);
 
     // 2. レイヤーの変換
-    const layers = this.convertLayers(model._2xLayer?._2xLayerInfoItem, projectName);
+    const { layers, layerIdMap } = this.convertLayers(model._2xLayer?._2xLayerInfoItem, projectName);
 
-    // 3. メッシュテーブルの変換
+    // 3. ペイント情報の変換
+    const { paintSnapshot, paintMap } = this.convertPaint(model._2xPaint);
+
+    // 4. メッシュテーブルの変換
     const polygonMeshTable = this.convertMeshTable(model._2xBooleanMeshInfo?._2xBooleanMeshInfo);
 
-    // 4. オブジェクトの変換 (失敗した部材はスキップ・フォールバックし、console.log に出力)
-    const objects = this.convertObjects(model._2xObject);
+    // 5. オブジェクトの変換 (失敗した部材はスキップ・フォールバックし、console.log に出力)
+    const objects = this.convertObjects(model._2xObject, paintMap, layerIdMap);
 
-    // 5. 木取り図 (CutList) の変換
+    // 6. 木取り図 (CutList) の変換
     const cutList = this.convertCutList(model.CutList?.CutListPartsBase);
 
-    // 6. 画像情報のマップ
-    this.mapPictureImages(objects, model._2xPictureImageInfos?._2xPictureImageInfo);
+    // 7. 画像テーブルの変換
+    const pictureImageTable = this.convertPictureImageTable(
+      model._2xPictureImageInfos?._2xPictureImageInfo
+    );
 
     const v4Data: Cadiy4Data = {
       version: 1,
@@ -61,12 +79,20 @@ export class LegacyToV4Converter {
       snaps: [],
     };
 
+    if (paintSnapshot && paintSnapshot.paints && paintSnapshot.paints.length > 0) {
+      v4Data.paint = { snapshot: paintSnapshot };
+    }
+
     if (cutList && cutList.layouts.length > 0) {
       v4Data.cutList = cutList;
     }
 
     if (polygonMeshTable && polygonMeshTable.length > 0) {
       v4Data.polygonMeshTable = polygonMeshTable;
+    }
+
+    if (pictureImageTable && pictureImageTable.length > 0) {
+      v4Data.pictureImageTable = pictureImageTable;
     }
 
     return v4Data;
@@ -97,9 +123,13 @@ export class LegacyToV4Converter {
   }
 
   /**
-   * レイヤー一覧の変換 (ルートレイヤーをID 0として自動生成し、旧レイヤーIDを +1 シフト)
+   * レイヤー一覧の変換 (ルートレイヤーをID 0として自動生成し、旧レイヤーを順にID 1, 2... にマッピング)
    */
-  private convertLayers(legacyLayers: any, projectName: string): LayerData[] {
+  private convertLayers(
+    legacyLayers: any,
+    projectName: string
+  ): { layers: LayerData[]; layerIdMap: Map<string, number> } {
+    const layerIdMap = new Map<string, number>();
     const rootLayer: LayerData = {
       id: 0,
       name: projectName,
@@ -111,13 +141,17 @@ export class LegacyToV4Converter {
     };
 
     const result: LayerData[] = [rootLayer];
-    if (!legacyLayers) return result;
+    if (!legacyLayers) return { layers: result, layerIdMap };
 
     const layerItems: LegacyLayerItem[] = Array.isArray(legacyLayers) ? legacyLayers : [legacyLayers];
 
-    for (const item of layerItems) {
+    for (let i = 0; i < layerItems.length; i++) {
+      const item = layerItems[i];
       try {
-        const id = parseInt(item.LayerID || '0', 10) + 1;
+        const id = i + 1;
+        if (item.LayerID !== undefined) {
+          layerIdMap.set(String(item.LayerID), id);
+        }
         const color = this.parseHexColor(item.LayerColor, { r: 0.5, g: 0.5, b: 0.5 });
         result.push({
           id,
@@ -136,13 +170,61 @@ export class LegacyToV4Converter {
       }
     }
 
-    return result;
+    return { layers: result, layerIdMap };
+  }
+
+  /**
+   * ペイント情報の変換
+   */
+  private convertPaint(legacyPaint?: LegacyPaint | string): {
+    paintSnapshot: PaintSnapshot | null;
+    paintMap: Map<string, string>;
+  } {
+    const paintMap = new Map<string, string>();
+    if (!legacyPaint || typeof legacyPaint !== 'object' || !legacyPaint._2xPaintings) {
+      return { paintSnapshot: null, paintMap };
+    }
+
+    const paintings: LegacyPainting[] = Array.isArray(legacyPaint._2xPaintings)
+      ? legacyPaint._2xPaintings
+      : [legacyPaint._2xPaintings];
+
+    const paints: PaintItem[] = [];
+
+    for (const p of paintings) {
+      if (!p.PaintID) continue;
+      const id = `legacy-${p.PaintID}`;
+      const color = this.parseHexColor(p.PaintColor, { r: 0.8, g: 0.8, b: 0.8 });
+      paints.push({
+        id,
+        name: p.PaintName || `塗料 ${p.PaintID}`,
+        color,
+        finish: 'wood',
+        specs: [],
+      });
+      paintMap.set(String(p.PaintID), id);
+    }
+
+    const paintSnapshot: PaintSnapshot = {
+      id: 'snapshot',
+      name: 'snapshot',
+      isPreset: false,
+      paints,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    return { paintSnapshot, paintMap };
   }
 
   /**
    * 全オブジェクトの変換
    */
-  private convertObjects(container?: any): CadiyObject[] {
+  private convertObjects(
+    container?: any,
+    paintMap?: Map<string, string>,
+    layerIdMap?: Map<string, number>
+  ): CadiyObject[] {
     if (!container || typeof container !== 'object') return [];
 
     const objects: CadiyObject[] = [];
@@ -154,7 +236,7 @@ export class LegacyToV4Converter {
 
       for (const item of list) {
         try {
-          const converted = this.convertSingleObject(tag, item);
+          const converted = this.convertSingleObject(tag, item, paintMap, layerIdMap);
           if (converted) {
             objects.push(converted);
           }
@@ -178,16 +260,26 @@ export class LegacyToV4Converter {
   /**
    * 単一オブジェクトの変換
    */
-  private convertSingleObject(tag: string, item: any): CadiyObject | null {
-    const base = this.extractBaseProperties(item, tag);
+  private convertSingleObject(
+    tag: string,
+    item: any,
+    paintMap?: Map<string, string>,
+    layerIdMap?: Map<string, number>
+  ): CadiyObject | null {
+    const base = this.extractBaseProperties(item, tag, paintMap, layerIdMap);
 
     switch (tag) {
       case '_2xBoard': {
+        const edgeCuts = this.parseEdgeCuts(item.CutValue, item.RoundValue, item.RoundModes, base.size);
+        const cutAngles = edgeCuts && edgeCuts.length > 0 ? [0, 0, 0, 0, 0, 0, 0, 0] : this.parseCutAngles(item.CutValue);
         const board: BoardObject = {
           ...base,
           type: 'board',
-          cutAngles: this.parseCutAngles(item.CutValue),
+          cutAngles,
         };
+        if (edgeCuts && edgeCuts.length > 0) {
+          board.edgeCuts = edgeCuts;
+        }
         if (item.StandardSize) {
           board.legacyStandardSize = this.parseVector3(item.StandardSize);
         }
@@ -205,12 +297,70 @@ export class LegacyToV4Converter {
         return board;
       }
 
+      case '_2xLumber': {
+        const edgeCuts = this.parseEdgeCuts(item.CutValue, item.RoundValue, item.RoundModes, base.size);
+        const cutAngles = edgeCuts && edgeCuts.length > 0 ? [0, 0, 0, 0, 0, 0, 0, 0] : this.parseCutAngles(item.CutValue);
+        const lumber: LumberObject = {
+          ...base,
+          type: 'lumber',
+          cutAngles,
+        };
+        if (edgeCuts && edgeCuts.length > 0) {
+          lumber.edgeCuts = edgeCuts;
+        }
+        if (item.StandardSize) {
+          lumber.legacyStandardSize = this.parseVector3(item.StandardSize);
+        }
+        if (item.UnitPrice) {
+          const price = parseFloat(item.UnitPrice);
+          if (!isNaN(price)) lumber.unitPrice = price;
+        }
+        if (item.SpecificGravity) {
+          const sg = parseFloat(item.SpecificGravity);
+          if (!isNaN(sg)) lumber.specificGravity = sg;
+        }
+        if (item.Remarks) {
+          lumber.remarks = String(item.Remarks);
+        }
+        return lumber;
+      }
+
       case '_2xCylinder': {
         const cyl: CylinderObject = {
           ...base,
           type: 'cylinder',
         };
+        if (item.StandardSize) {
+          cyl.legacyStandardSize = this.parseVector3(item.StandardSize);
+        }
+        if (item.UnitPrice) {
+          const price = parseFloat(item.UnitPrice);
+          if (!isNaN(price)) cyl.unitPrice = price;
+        }
+        if (item.SpecificGravity) {
+          const sg = parseFloat(item.SpecificGravity);
+          if (!isNaN(sg)) cyl.specificGravity = sg;
+        }
         return cyl;
+      }
+
+      case '_2xComment': {
+        const arrowPoint = item.ArrowPoint
+          ? this.parseVector3FromObjOrStr(item.ArrowPoint)
+          : undefined;
+        const comm: CommentObject = {
+          ...base,
+          type: 'comment',
+          text: item.CommentText ? String(item.CommentText) : '',
+          arrowPoint,
+          fontSize: 28,
+          backgroundColor: item.Diffuse
+            ? this.parseColorRGBA(item.Diffuse, { r: 1, g: 1, b: 0.8, a: 1 })
+            : { r: 1, g: 1, b: 0.8, a: 1 },
+          billboard: false,
+          size: { x: 0, y: 0, z: 0 },
+        };
+        return comm;
       }
 
       case '_2xDimension': {
@@ -228,6 +378,52 @@ export class LegacyToV4Converter {
           billboard: false,
         };
         return dim;
+      }
+
+      case '_2xPicture': {
+        // ImageMode が "false" の場合は文字看板 (textBoard)
+        if (item.ImageMode === 'false') {
+          const textBoard: TextBoardObject = {
+            ...base,
+            type: 'textBoard',
+            text: item.CommentText ? String(item.CommentText) : '',
+            fontSize: item.FontSize ? parseFloat(item.FontSize) : 12,
+            fontFamily: item.FontFamily || 'Meiryo UI',
+            bold: item.FontStyle === 'Bold',
+            italic: item.FontStyle === 'Italic',
+            frameVisible: item.FrameVisibled !== 'false',
+            contentRotation: 90,
+            backgroundColor:
+              item.BackColorMode === 'true'
+                ? { ...this.parseColor(item.BackColor), a: 1 }
+                : { r: 1, g: 1, b: 1, a: 0 },
+          };
+          return textBoard;
+        }
+
+        let imageMimeType = 'image/jpeg';
+        if (item.ImagePath) {
+          const lower = String(item.ImagePath).toLowerCase();
+          if (lower.endsWith('.png')) {
+            imageMimeType = 'image/png';
+          } else if (lower.endsWith('.gif')) {
+            imageMimeType = 'image/gif';
+          } else if (lower.endsWith('.bmp')) {
+            imageMimeType = 'image/bmp';
+          }
+        }
+
+        const pic: PictureObject = {
+          ...base,
+          type: 'picture',
+          imageBase64Id: item.ImageBase64ID ? parseInt(item.ImageBase64ID, 10) : undefined,
+          imageMimeType,
+          aspectRatio: parseFloat(item.AspectRatio || '1') || 1,
+          aspectRatioFixed: item.AspectRatioFixed !== 'false',
+          dispPattern: 1,
+          contentRotation: 270,
+        };
+        return pic;
       }
 
       case '_2xScrew': {
@@ -257,25 +453,58 @@ export class LegacyToV4Converter {
       }
 
       case '_2xDiyMaterial': {
-        return {
+        const diyType = String(item.DiyMaterialType || '');
+        const thickness = parseFloat(item.Thickness || '0.003') || 0.003;
+
+        // 1. 波板 (waveBoard)
+        if (diyType.startsWith('diyMatTypeWaveBoard')) {
+          const waveBoard: WaveBoardObject = {
+            ...base,
+            type: 'waveBoard',
+            thickness,
+            subType: diyType === 'diyMatTypeWaveBoard1' ? 'sineSmall' : 'trapezoidal',
+          };
+          return waveBoard;
+        }
+
+        // 2. パイプ・チューブ (tube)
+        if (diyType.startsWith('diyTubeMaterial')) {
+          let subType = 'pvc';
+          if (diyType === 'diyTubeMaterial2') subType = 'steel';
+          else if (diyType === 'diyTubeMaterial3') subType = 'coated';
+          else if (diyType === 'diyTubeMaterial4') subType = 'plated';
+
+          const tube: TubeObject = {
+            ...base,
+            type: 'tube',
+            thickness,
+            subType,
+          };
+          return tube;
+        }
+
+        // 3. 鋼材・アルミ等 (steelProfile)
+        let shape = 'flatBar';
+        let material = 'steel';
+        if (diyType === 'diyMatTypeSteelMaterial1') {
+          shape = 'lAngle';
+          material = 'steel';
+        } else if (diyType === 'diyMatTypeAlumiMaterial1') {
+          shape = 'lAngle';
+          material = 'alumi';
+        } else if (diyType === 'diyMatTypeSteelMaterial2') {
+          shape = 'flatBar';
+          material = 'steel';
+        }
+
+        const profile: SteelProfileObject = {
           ...base,
           type: 'steelProfile',
-          shape: 'flatBar',
-          material: 'steel',
-          thickness: parseFloat(item.Thickness || '0.003') || 0.003,
-        } as any;
-      }
-
-      case '_2xPicture': {
-        const pic: PictureObject = {
-          ...base,
-          type: 'picture',
-          imageBase64: item.ImageBase64ID ? undefined : undefined,
-          imageMimeType: 'image/png',
-          aspectRatio: parseFloat(item.AspectRatio || '1') || 1,
-          aspectRatioFixed: item.AspectRatioFixed !== 'false',
+          shape,
+          material,
+          thickness,
         };
-        return pic;
+        return profile;
       }
 
       default: {
@@ -297,7 +526,12 @@ export class LegacyToV4Converter {
   /**
    * 全部材共通プロパティの抽出
    */
-  private extractBaseProperties(item: any, tag: string): {
+  private extractBaseProperties(
+    item: any,
+    tag: string,
+    paintMap?: Map<string, string>,
+    layerIdMap?: Map<string, number>
+  ): {
     id: string;
     displayId?: number;
     name: string;
@@ -311,25 +545,45 @@ export class LegacyToV4Converter {
     layerId: number;
     color: ColorRGB;
     textureId?: number;
+    defaultPaintId?: string;
     noAggregated?: boolean;
   } {
     const uid = item.UniqueID !== undefined ? String(item.UniqueID) : Math.random().toString(36).slice(2, 9);
-    const id = tag === '_2xBoard' ? `legacy-${uid}` : (uid.startsWith('legacy-') ? uid : `legacy-${uid}`);
+    const id = (tag === '_2xBoard' || tag === '_2xLumber' || tag === '_2xCylinder')
+      ? `legacy-${uid}`
+      : (uid.startsWith('legacy-') ? uid : `legacy-${uid}`);
     const displayId = parseInt(uid, 10);
 
     const position = this.parseVector3(item.Location);
     const quaternion = this.parseQuaternion(item.Quaternion);
     const size = this.parseVector3(item.Size);
 
-    const color = this.parseColor(item.Diffuse, { r: 0.8, g: 0.8, b: 0.8 });
+    // Diffuse または文字色
+    const color = (tag === '_2xDimension' || tag === '_2xComment' || (tag === '_2xPicture' && item.ImageMode === 'false'))
+      ? { r: 0, g: 0, b: 0 }
+      : this.parseColor(item.Diffuse, { r: 0.8, g: 0.8, b: 0.8 });
+
     const name = item.CommentText ? String(item.CommentText) : (tag.replace(/^_2x/, '') || '部材');
     const partName = item.SubPartsName ? String(item.SubPartsName) : (item.LinkedCutPartsText ? String(item.LinkedCutPartsText) : undefined);
 
-    const layerId = parseInt(item.Layer || '0', 10) + 1;
+    const rawLayer = item.Layer !== undefined ? String(item.Layer) : '0';
+    let layerId = 1;
+    if (layerIdMap && layerIdMap.has(rawLayer)) {
+      layerId = layerIdMap.get(rawLayer)!;
+    } else {
+      const parsedNum = parseInt(rawLayer, 10);
+      layerId = isNaN(parsedNum) ? 1 : parsedNum + 1;
+    }
     const groupId = parseInt(item.GroupID || '0', 10) || 0;
     const visible = item.Hide !== 'true';
-    const textureId = item.Texture ? parseInt(item.Texture, 10) : undefined;
+    const textureId = item.Texture !== undefined && item.Texture !== '-1' ? parseInt(item.Texture, 10) : undefined;
     const noAggregated = item.NoAggregated === 'true';
+
+    // ペイントマッピング
+    let defaultPaintId: string | undefined;
+    if (paintMap && item.PaintID && item.PaintID !== '-1') {
+      defaultPaintId = paintMap.get(String(item.PaintID));
+    }
 
     return {
       id,
@@ -345,6 +599,7 @@ export class LegacyToV4Converter {
       layerId,
       color,
       textureId,
+      defaultPaintId,
       noAggregated,
     };
   }
@@ -432,29 +687,26 @@ export class LegacyToV4Converter {
   /**
    * 画像情報のマッピング
    */
-  private mapPictureImages(objects: CadiyObject[], imageInfos?: any): void {
-    if (!imageInfos) return;
-    const list = Array.isArray(imageInfos) ? imageInfos : [imageInfos];
-    const imageMap = new Map<number, string>();
+  /**
+   * 画像情報テーブル (pictureImageTable) の変換
+   */
+  private convertPictureImageTable(legacyImageInfos?: any): PictureImageItem[] {
+    if (!legacyImageInfos) return [];
+    const list = Array.isArray(legacyImageInfos) ? legacyImageInfos : [legacyImageInfos];
+    const result: PictureImageItem[] = [];
 
     for (const info of list) {
-      if (info.ImageBase64ID && info.ImageBase64) {
-        const id = parseInt(info.ImageBase64ID, 10);
-        imageMap.set(id, info.ImageBase64);
-      }
-    }
-
-    for (const obj of objects) {
-      if (obj.type === 'picture') {
-        const pic = obj as PictureObject;
-        if (pic.imageBase64 && imageMap.has(Number(pic.imageBase64))) {
-          const b64 = imageMap.get(Number(pic.imageBase64));
-          if (b64) {
-            pic.imageBase64 = b64.startsWith('data:') ? b64 : `data:image/png;base64,${b64}`;
-          }
+      if (info && info.ImageBase64ID !== undefined && info.ImageBase64) {
+        const id = parseInt(String(info.ImageBase64ID), 10);
+        if (!isNaN(id)) {
+          result.push({
+            id,
+            imageBase64: String(info.ImageBase64).trim(),
+          });
         }
       }
     }
+    return result;
   }
 
   // --- ヘルパーメソッド ---
@@ -466,6 +718,28 @@ export class LegacyToV4Converter {
       throw new Error(`無効なVector3文字列です: "${str}"`);
     }
     return { x: parts[0], y: parts[1], z: parts[2] };
+  }
+
+  private parseVector3FromObjOrStr(val: any, defaultVal: Vector3 = { x: 0, y: 0, z: 0 }): Vector3 {
+    if (!val) return defaultVal;
+    if (typeof val === 'string') {
+      try {
+        return this.parseVector3(val, defaultVal);
+      } catch {
+        return defaultVal;
+      }
+    }
+    if (typeof val === 'object') {
+      const x = parseFloat(val.X ?? val.x ?? '0');
+      const y = parseFloat(val.Y ?? val.y ?? '0');
+      const z = parseFloat(val.Z ?? val.z ?? '0');
+      return {
+        x: isNaN(x) ? defaultVal.x : x,
+        y: isNaN(y) ? defaultVal.y : y,
+        z: isNaN(z) ? defaultVal.z : z,
+      };
+    }
+    return defaultVal;
   }
 
   private parseQuaternion(str?: string, defaultVal: Quaternion = { x: 0, y: 0, z: 0, w: 1 }): Quaternion {
@@ -490,6 +764,20 @@ export class LegacyToV4Converter {
     };
   }
 
+  private parseColorRGBA(str?: string, defaultVal: ColorRGBA = { r: 0.8, g: 0.8, b: 0.8, a: 1 }): ColorRGBA {
+    if (!str) return defaultVal;
+    const parts = str.split(',').map((s) => parseFloat(s.trim()));
+    if (parts.length < 3 || parts.some((n) => isNaN(n))) {
+      return defaultVal;
+    }
+    return {
+      r: Math.min(Math.max(parts[0], 0), 1),
+      g: Math.min(Math.max(parts[1], 0), 1),
+      b: Math.min(Math.max(parts[2], 0), 1),
+      a: parts.length >= 4 && !isNaN(parts[3]) ? Math.min(Math.max(parts[3], 0), 1) : 1,
+    };
+  }
+
   private parseHexColor(hex?: string, defaultVal: ColorRGB = { r: 0.5, g: 0.5, b: 0.5 }): ColorRGB {
     if (!hex || !hex.startsWith('#')) return defaultVal;
     const raw = hex.replace('#', '');
@@ -511,12 +799,108 @@ export class LegacyToV4Converter {
 
   private parseCutAngles(str?: string): number[] {
     const defaults = [0, 0, 0, 0, 0, 0, 0, 0];
-    if (!str) return defaults;
+    if (!str || str === 'Non') return defaults;
     const parts = str.split(',').map((s) => parseFloat(s.trim()));
     if (parts.length === 8 && parts.every((n) => !isNaN(n))) {
       return parts;
     }
     return defaults;
+  }
+
+  /**
+   * CutValue (角度) および RoundValue (R面取り) から V4 edgeCuts 配列を生成
+   */
+  private parseEdgeCuts(
+    cutValueStr?: string,
+    roundValueStr?: string,
+    _roundModesStr?: string,
+    size?: Vector3
+  ): EdgeCut[] | undefined {
+    const edgeCuts: EdgeCut[] = [];
+
+    // 1. 斜め留め切り (CutValue)
+    if (cutValueStr && cutValueStr !== 'Non') {
+      const cutAngles = cutValueStr.split(',').map((s) => parseFloat(s.trim()));
+      if (cutAngles.length >= 8 && size) {
+        // 始端側マイター (インデックス0): 正なら edge 4 (手前右)、負なら edge 6 (手前左)
+        if (cutAngles[0] !== 0 && !isNaN(cutAngles[0])) {
+          const deg = Math.abs(cutAngles[0]);
+          const faceADist = size.x;
+          const faceBDist = size.x * Math.tan((deg * Math.PI) / 180);
+          const edgeIndex = cutAngles[0] > 0 ? 4 : 6;
+          edgeCuts.push({
+            edgeIndex,
+            mode: 'cut',
+            faceADist,
+            faceBDist,
+          });
+        }
+        // 始端側ベベル (インデックス1): 正なら edge 2 (下面奥)、負なら edge 0 (下面手前)
+        if (cutAngles[1] !== 0 && !isNaN(cutAngles[1])) {
+          const deg = Math.abs(cutAngles[1]);
+          const faceADist = size.y;
+          const faceBDist = size.y * Math.tan((deg * Math.PI) / 180);
+          if (cutAngles[1] > 0) {
+            edgeCuts.push({ edgeIndex: 2, mode: 'cut', faceADist, faceBDist });
+          } else {
+            edgeCuts.push({ edgeIndex: 0, mode: 'cut', faceADist, faceBDist });
+            // 両端ベベル (-Z/-X) の場合
+            if (cutAngles[3] < 0) {
+              edgeCuts.push({ edgeIndex: 3, mode: 'cut', faceADist, faceBDist });
+            }
+          }
+        }
+        // 終端側マイター (インデックス2): 正なら edge 5 (奥右)、負なら edge 7 (奥左)
+        if (cutAngles[2] !== 0 && !isNaN(cutAngles[2])) {
+          const deg = Math.abs(cutAngles[2]);
+          const faceADist = size.x;
+          const faceBDist = size.x * Math.tan((deg * Math.PI) / 180);
+          const edgeIndex = cutAngles[2] > 0 ? 5 : 7;
+          edgeCuts.push({
+            edgeIndex,
+            mode: 'cut',
+            faceADist,
+            faceBDist,
+          });
+        }
+        // 長辺傾斜カット (インデックス6): 負なら edge 7 (奥左)、正なら edge 5 (奥右)
+        if (cutAngles[6] !== 0 && !isNaN(cutAngles[6])) {
+          const deg = Math.abs(cutAngles[6]);
+          const faceBDist = size.z;
+          const faceADist = size.z * Math.tan((deg * Math.PI) / 180);
+          const edgeIndex = cutAngles[6] < 0 ? 7 : 5;
+          edgeCuts.push({
+            edgeIndex,
+            mode: 'cut',
+            faceADist,
+            faceBDist,
+          });
+        }
+      }
+    }
+
+    // 2. R面取り / ラウンド加工 (RoundValue)
+    if (roundValueStr && roundValueStr !== 'Non') {
+      const rounds = roundValueStr.split(',').map((s) => parseFloat(s.trim()));
+      // 4要素: [0 -> edge 4 (手前右), 1 -> edge 6 (手前左), 2 -> edge 7 (奥左), 3 -> edge 5 (奥右)]
+      if (rounds.length >= 4) {
+        const edgeMap: Record<number, number> = { 0: 4, 1: 6, 2: 7, 3: 5 };
+        rounds.forEach((val, idx) => {
+          if (!isNaN(val) && val > 0) {
+            const edgeIndex = edgeMap[idx] !== undefined ? edgeMap[idx] : idx + 4;
+            edgeCuts.push({
+              edgeIndex,
+              mode: 'round',
+              faceADist: val,
+              faceBDist: val,
+              radius: val,
+            });
+          }
+        });
+      }
+    }
+
+    return edgeCuts.length > 0 ? edgeCuts : undefined;
   }
 
   private parseCutLocation(str?: string): { x: number; z: number } {

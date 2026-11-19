@@ -51,7 +51,20 @@
             }
           }
         },
-        "_2xPaint": { "type": "string" },
+        "_2xPaint": {
+          "type": "object",
+          "properties": {
+            "_2xPaintings": {
+              "oneOf": [
+                { "$ref": "#/definitions/LegacyPaintings" },
+                {
+                  "type": "array",
+                  "items": { "$ref": "#/definitions/LegacyPaintings" }
+                }
+              ]
+            }
+          }
+        },
         "_2xBooleanMeshInfo": {
           "type": "object",
           "properties": {
@@ -89,10 +102,22 @@
                 { "type": "array", "items": { "$ref": "#/definitions/LegacyBoard" } }
               ]
             },
+            "_2xLumber": {
+              "oneOf": [
+                { "$ref": "#/definitions/LegacyLumber" },
+                { "type": "array", "items": { "$ref": "#/definitions/LegacyLumber" } }
+              ]
+            },
             "_2xCylinder": {
               "oneOf": [
                 { "$ref": "#/definitions/LegacyCylinder" },
                 { "type": "array", "items": { "$ref": "#/definitions/LegacyCylinder" } }
+              ]
+            },
+            "_2xComment": {
+              "oneOf": [
+                { "$ref": "#/definitions/LegacyComment" },
+                { "type": "array", "items": { "$ref": "#/definitions/LegacyComment" } }
               ]
             },
             "_2xPolygon": {
@@ -193,6 +218,7 @@
       "required": ["UniqueID", "Location", "Quaternion", "Size"],
       "properties": {
         "UniqueID": { "type": "string" },
+        "ModelType": { "type": "string" },
         "CommentText": { "type": "string" },
         "SubPartsName": { "type": "string" },
         "LinkedCutPartsText": { "type": "string" },
@@ -201,7 +227,9 @@
         "Size": { "type": "string" },
         "StandardSize": { "type": "string" },
         "Diffuse": { "type": "string" },
+        "PaintDiffuse": { "type": "string" },
         "Specular": { "type": "string" },
+        "PaintSpecular": { "type": "string" },
         "PaintID": { "type": "string" },
         "UnitPrice": { "type": "string" },
         "SpecificGravity": { "type": "string" },
@@ -214,8 +242,53 @@
         "PlywoodTextureID": { "type": "string" },
         "NoAggregated": { "type": "string", "enum": ["true", "false"] },
         "Dummy": { "type": "string" },
-        "Style": { "type": "string" }
+        "Style": { "type": "string" },
+        "NumberPerSet": { "type": "string" },
+        "SameSetID": { "type": "string" },
+        "IsSubParts": { "type": "string" },
+        "HasGuidanceURL": { "type": "string" },
+        "GroupCriteria": { "type": "string" },
+        "CutValue": { "type": "string" },
+        "RoundValue": { "type": "string" },
+        "RoundModes": { "type": "string" }
       }
+    },
+    "LegacyPaintings": {
+      "type": "object",
+      "required": ["PaintID", "PaintName", "PaintColor"],
+      "properties": {
+        "PaintID": { "type": "string" },
+        "PaintName": { "type": "string" },
+        "PaintColor": { "type": "string" },
+        "PaintSpecular": { "type": "string" },
+        "PaintMaker": { "type": "string" },
+        "PaintBrand": { "type": "string" },
+        "PaintURL": { "type": "string" },
+        "PaintImage": { "type": "string" },
+        "PaintInfo": { "type": "string" },
+        "PaintTextureID": { "type": "string" }
+      }
+    },
+    "LegacyLumber": {
+      "allOf": [
+        { "$ref": "#/definitions/CommonLegacyObject" }
+      ]
+    },
+    "LegacyComment": {
+      "allOf": [
+        { "$ref": "#/definitions/CommonLegacyObject" },
+        {
+          "type": "object",
+          "properties": {
+            "LinePattern": { "type": "string" },
+            "LineWidth": { "type": "string" },
+            "LineColor": { "type": "object" },
+            "ArrowPoint": { "type": "object" },
+            "SnapVector": { "type": "object" },
+            "LineEndType": { "type": "string" }
+          }
+        }
+      ]
     },
     "LegacyBoard": {
       "allOf": [
@@ -323,7 +396,15 @@
             "ImageBase64ID": { "type": "string" },
             "ImagePath": { "type": "string" },
             "AspectRatioFixed": { "type": "string" },
-            "AspectRatio": { "type": "string" }
+            "AspectRatio": { "type": "string" },
+            "ImageMode": { "type": "string" },
+            "FontSize": { "type": "string" },
+            "FontStyle": { "type": "string" },
+            "FontFamily": { "type": "string" },
+            "FrameVisibled": { "type": "string" },
+            "ForeColor": { "type": "string" },
+            "BackColor": { "type": "string" },
+            "BackColorMode": { "type": "string" }
           }
         }
       ]

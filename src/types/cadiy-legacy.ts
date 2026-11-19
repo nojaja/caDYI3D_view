@@ -81,6 +81,38 @@ export interface LegacyBaseObject {
   GroupCriteria?: string;
 }
 
+export interface LegacyPainting {
+  PaintID: string;
+  PaintName: string;
+  PaintColor: string; // "#AARRGGBB"
+  PaintSpecular?: string;
+  PaintMaker?: string;
+  PaintBrand?: string;
+  PaintURL?: string;
+  PaintImage?: string;
+  PaintInfo?: string;
+  PaintTextureID?: string;
+}
+
+export interface LegacyPaint {
+  _2xPaintings?: LegacyPainting | LegacyPainting[];
+}
+
+export interface LegacyCommentObject extends LegacyBaseObject {
+  LinePattern?: string;
+  LineWidth?: string;
+  LineColor?: string | { R: string; G: string; B: string; A: string };
+  ArrowPoint?: { X: string; Y: string; Z: string } | string;
+  SnapVector?: { X: string; Y: string; Z: string } | string;
+  LineEndType?: string;
+}
+
+export interface LegacyLumberObject extends LegacyBaseObject {
+  CutValue?: string;
+  RoundValue?: string;
+  RoundModes?: string;
+}
+
 export interface LegacyBoardObject extends LegacyBaseObject {
   CutValue?: string;
   RoundValue?: string;
@@ -201,7 +233,7 @@ export interface Legacy2xModel {
   _2xLayer?: {
     _2xLayerInfoItem?: LegacyLayerItem | LegacyLayerItem[];
   };
-  _2xPaint?: string;
+  _2xPaint?: LegacyPaint | string;
   _2xBooleanMeshInfo?: {
     _2xBooleanMeshInfo?: LegacyBooleanMeshInfo | LegacyBooleanMeshInfo[];
   };
@@ -210,7 +242,9 @@ export interface Legacy2xModel {
   };
   _2xObject: {
     _2xBoard?: LegacyBoardObject | LegacyBoardObject[];
+    _2xLumber?: LegacyLumberObject | LegacyLumberObject[];
     _2xCylinder?: LegacyCylinderObject | LegacyCylinderObject[];
+    _2xComment?: LegacyCommentObject | LegacyCommentObject[];
     _2xDimension?: LegacyDimensionObject | LegacyDimensionObject[];
     _2xScrew?: LegacyScrewObject | LegacyScrewObject[];
     _2xPolygon?: LegacyPolygonObject | LegacyPolygonObject[];
