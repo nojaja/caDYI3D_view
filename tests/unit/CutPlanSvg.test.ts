@@ -507,7 +507,7 @@ describe('ViewerUI - 材料取り図(木取り図) SVG描画ロジック', () =>
   });
 
   it('001_tana.cadiy4 の材料取り図で、同一standardIdの部材が正しくグループ化され、1D角材の斜めカットが反映されること', () => {
-    const filePath = path.resolve(__dirname, '../../testdata/001_tana.cadiy4');
+    const filePath = path.resolve(__dirname, '../data/001_tana.cadiy4');
     const content = fs.readFileSync(filePath, 'utf-8');
     const parser = new Cadiy4Parser();
     const data = parser.parse(content);
