@@ -330,15 +330,15 @@ export class ViewerUI {
       return;
     }
 
-    for (const sheet of sheets) {
+    sheets.forEach((sheet, index) => {
       if (sheet.layout === '2d') {
-        const sheetEl = this.render2DSheet(sheet);
+        const sheetEl = this.render2DSheet(sheet, index);
         this.cutlistSheetsContainer.appendChild(sheetEl);
       } else {
-        const sheetEl = this.render1DSheet(sheet);
+        const sheetEl = this.render1DSheet(sheet, index);
         this.cutlistSheetsContainer.appendChild(sheetEl);
       }
-    }
+    });
 
     // レンダリング後に画面サイズに合わせてフォントサイズを動的調整
     this.updateCutPlanFontSizes();
@@ -408,14 +408,15 @@ export class ViewerUI {
   /**
    * 2D 板材・合板シートの材料取り図レンダリング
    */
-  private render2DSheet(sheet: CutPlanSheet): HTMLElement {
+  private render2DSheet(sheet: CutPlanSheet, index?: number): HTMLElement {
     const sheetEl = document.createElement('div');
     sheetEl.className = 'cutplan-sheet cutplan-sheet-2d';
 
     const header = document.createElement('div');
     header.className = 'cutplan-sheet-header';
+    const displayNum = (index !== undefined ? index : sheet.baseId) + 1;
     header.innerHTML = `
-      <span><strong>材料 #${sheet.baseId + 1}</strong> (${sheet.lumberName || '合板'}) - 原板: ${sheet.sheetWidthMm} × ${sheet.sheetLengthMm} mm</span>
+      <span><strong>材料 #${displayNum}</strong> (${sheet.lumberName || '合板'}) - 原板: ${sheet.sheetWidthMm} × ${sheet.sheetLengthMm} mm</span>
       <span>使用: ${sheet.sheetWidthMm} × ${sheet.usedLengthMm.toFixed(0)} mm / 端材: ${sheet.remainingLengthMm.toFixed(0)} mm <span class="cutplan-yield">(歩留まり: ${sheet.yieldRatePercent.toFixed(1)}%)</span></span>
     `;
 
@@ -563,10 +564,11 @@ export class ViewerUI {
       const ph = item.widthMm;
 
       const edgeCuts = item.edgeCuts || [];
-      const cut7 = edgeCuts.find((c: any) => c.edgeIndex === 7);
-      const cut4 = edgeCuts.find((c: any) => c.edgeIndex === 4);
-      const cut5 = edgeCuts.find((c: any) => c.edgeIndex === 5);
-      const cut6 = edgeCuts.find((c: any) => c.edgeIndex === 6);
+      const cutCuts = edgeCuts.filter((c: any) => c.mode === 'cut');
+      const cut7 = cutCuts.find((c: any) => c.edgeIndex === 7);
+      const cut4 = cutCuts.find((c: any) => c.edgeIndex === 4);
+      const cut5 = cutCuts.find((c: any) => c.edgeIndex === 5);
+      const cut6 = cutCuts.find((c: any) => c.edgeIndex === 6);
 
       if (cut7) {
         // 斜めカット (右上角: Corner 7)
@@ -787,8 +789,72 @@ export class ViewerUI {
       const pw = item.lengthMm;
       const { partName, sizeText } = ViewerUI.getPartLabelInfo(item, false);
 
-      // パーツ本体
-      svgInner += `<rect x="${curX}" y="0" width="${pw}" height="${boardHeight}" class="cutplan-svg-part" data-object-id="${item.object.id}" fill="#fde68a" stroke="#d97706" stroke-width="2" rx="0" />`;
+      // パーツ本体および斜めカット (edgeCuts) の反映
+      const edgeCuts = item.edgeCuts || [];
+      const cutCuts = edgeCuts.filter((c: any) => c.mode === 'cut');
+      const cut6 = cutCuts.find((c: any) => c.edgeIndex === 6);
+      const cut4 = cutCuts.find((c: any) => c.edgeIndex === 4);
+      const cut7 = cutCuts.find((c: any) => c.edgeIndex === 7);
+      const cut5 = cutCuts.find((c: any) => c.edgeIndex === 5);
+
+      if (cut6 || cut4) {
+        // 右端 (+Z 端) の斜めカット (側板上端斜めカット等)
+        const cut = (cut6 || cut4)!;
+        const cutA = cut.faceADist * 1000;
+        const cutB = cut.faceBDist * 1000;
+
+        const polyPoints = [
+          `${curX},0`,
+          `${curX + pw - cutB},0`,
+          `${curX + pw},${boardHeight}`,
+          `${curX},${boardHeight}`,
+        ].join(' ');
+
+        const scrapPoints = [
+          `${curX + pw - cutB},0`,
+          `${curX + pw},0`,
+          `${curX + pw},${boardHeight}`,
+        ].join(' ');
+
+        svgInner += `<polygon points="${scrapPoints}" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,4" />`;
+        svgInner += `<polygon points="${polyPoints}" class="cutplan-svg-part" data-object-id="${item.object.id}" fill="#fde68a" stroke="#d97706" stroke-width="2" />`;
+        svgInner += `<line x1="${curX + pw - cutB}" y1="0" x2="${curX + pw}" y2="${boardHeight}" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2.5" pointer-events="none" style="pointer-events: none;" />`;
+        svgInner += ViewerUI.renderDiagonalCutLabel(
+          curX + pw - cutB, 0,
+          curX + pw, boardHeight,
+          cutA, cutB, fsText, true
+        );
+      } else if (cut7 || cut5) {
+        // 左端 (-Z 端) の斜めカット
+        const cut = (cut7 || cut5)!;
+        const cutA = cut.faceADist * 1000;
+        const cutB = cut.faceBDist * 1000;
+
+        const polyPoints = [
+          `${curX + cutB},0`,
+          `${curX + pw},0`,
+          `${curX + pw},${boardHeight}`,
+          `${curX},${boardHeight}`,
+        ].join(' ');
+
+        const scrapPoints = [
+          `${curX},0`,
+          `${curX + cutB},0`,
+          `${curX},${boardHeight}`,
+        ].join(' ');
+
+        svgInner += `<polygon points="${scrapPoints}" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,4" />`;
+        svgInner += `<polygon points="${polyPoints}" class="cutplan-svg-part" data-object-id="${item.object.id}" fill="#fde68a" stroke="#d97706" stroke-width="2" />`;
+        svgInner += `<line x1="${curX}" y1="${boardHeight}" x2="${curX + cutB}" y2="0" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2.5" pointer-events="none" style="pointer-events: none;" />`;
+        svgInner += ViewerUI.renderDiagonalCutLabel(
+          curX, boardHeight,
+          curX + cutB, 0,
+          cutA, cutB, fsText, true
+        );
+      } else {
+        // 通常パーツ
+        svgInner += `<rect x="${curX}" y="0" width="${pw}" height="${boardHeight}" class="cutplan-svg-part" data-object-id="${item.object.id}" fill="#fde68a" stroke="#d97706" stroke-width="2" rx="0" />`;
+      }
 
       // パーツラベル & サイズ (cutplan-part-size はパーツの上下中央 boardHeight / 2 に配置)
       const midX = curX + pw / 2;
@@ -848,7 +914,7 @@ export class ViewerUI {
   /**
    * 1D 角材シートの材料取り図レンダリング
    */
-  private render1DSheet(sheet: CutPlanSheet): HTMLElement {
+  private render1DSheet(sheet: CutPlanSheet, index?: number): HTMLElement {
     const sheetEl = document.createElement('div');
     sheetEl.className = 'cutplan-sheet cutplan-sheet-1d';
 
@@ -858,8 +924,9 @@ export class ViewerUI {
 
     const header = document.createElement('div');
     header.className = 'cutplan-sheet-header';
+    const displayNum = (index !== undefined ? index : sheet.baseId) + 1;
     header.innerHTML = `
-      <span><strong>材料 #${sheet.baseId + 1}</strong> (${sheet.lumberName || '角材'}) - 原木長: ${totalLen.toFixed(0)}mm</span>
+      <span><strong>材料 #${displayNum}</strong> (${sheet.lumberName || '角材'}) - 原木長: ${totalLen.toFixed(0)}mm</span>
       <span>使用長: ${sheet.usedLengthMm.toFixed(0)}mm / 端材: ${sheet.remainingLengthMm.toFixed(0)}mm <span class="cutplan-yield">(歩留まり: ${sheet.yieldRatePercent.toFixed(1)}%)</span></span>
     `;
 

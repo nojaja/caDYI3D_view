@@ -87,4 +87,60 @@ test.describe('caDIY3D Web Viewer - 3D Render Verification', () => {
 
     await page.screenshot({ path: 'tests/data/verification_iphone_capture.png' });
   });
+
+  test('001_tana.cadiy4 の3Dviewにて「補強バー」に塗料 (ブルー) の color プロパティが反映されること', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForFunction(() => (window as any).__VIEWER_READY__ === true, { timeout: 10000 });
+
+    const filePath = 'tests/data/001_tana.cadiy4';
+    const fileInput = page.locator('#file-input');
+    await fileInput.setInputFiles(filePath);
+
+    // モデル読み込み完了待機
+    const modelTitle = page.locator('#model-title');
+    await expect(modelTitle).toContainText('001_tana', { timeout: 10000 });
+    await page.waitForTimeout(500);
+
+    // 3Dシーン内の「補強バー」および通常部材のマテリアルカラーを検証
+    const colorInfo = await page.evaluate<{
+      barColor: { r: number; g: number; b: number } | null;
+      boardColor: { r: number; g: number; b: number } | null;
+    } | null>(() => {
+      const modelGroup = (window as any).__MODEL_GROUP__;
+      if (!modelGroup) return null;
+
+      let barColor: { r: number; g: number; b: number } | null = null;
+      let boardColor: { r: number; g: number; b: number } | null = null;
+
+      modelGroup.traverse((child: any) => {
+        if (child.isMesh && child.userData?.cadiyObject) {
+          const obj = child.userData.cadiyObject;
+          const mat = child.material;
+          if (obj.partName === '補強バー' || child.name === '補強バー') {
+            barColor = { r: mat.color.r, g: mat.color.g, b: mat.color.b };
+          } else if (obj.name?.includes('パイン集成材')) {
+            boardColor = { r: mat.color.r, g: mat.color.g, b: mat.color.b };
+          }
+        }
+      });
+
+      return { barColor, boardColor };
+    });
+
+    if (!colorInfo?.barColor || !colorInfo?.boardColor) {
+      throw new Error('Color info is missing');
+    }
+    const barColor = colorInfo.barColor;
+    const boardColor = colorInfo.boardColor;
+
+    // 補強バーは塗料（ブルー）の color: { r: 0.3098..., g: 0.3098..., b: 1 } が反映されていること
+    expect(barColor.r).toBeCloseTo(0.31, 2);
+    expect(barColor.g).toBeCloseTo(0.31, 2);
+    expect(barColor.b).toBeCloseTo(1.0, 2);
+
+    // パイン集成材は通常の木材色 (1.0, 1.0, 0.8) であること
+    expect(boardColor.r).toBeCloseTo(1.0, 2);
+    expect(boardColor.g).toBeCloseTo(1.0, 2);
+    expect(boardColor.b).toBeCloseTo(0.8, 2);
+  });
 });

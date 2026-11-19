@@ -647,4 +647,95 @@ describe('ModelBuilder', () => {
       expect(bb.max.y - bb.min.y).toBeCloseTo(0.325, 2); // 金具含む全高
     }
   });
+
+  it('defaultPaintId が指定された部材は、paint 内の塗料 color プロパティがレンダリングに反映されること', () => {
+    const builder = new ModelBuilder();
+    const paintObj = {
+      id: 'legacy-paint-1',
+      name: 'ブルー',
+      color: { r: 0.2, g: 0.4, b: 0.9 },
+      finish: 'wood'
+    };
+
+    const cylinderObj = {
+      id: 'cyl-1',
+      name: '丸棒',
+      partName: '補強バー',
+      type: 'cylinder' as const,
+      size: { x: 0.02, y: 0.02, z: 0.4 },
+      position: { x: 0, y: 0, z: 0 },
+      quaternion: { x: 0, y: 0, z: 0, w: 1 },
+      color: { r: 1, g: 1, b: 0.8 }, // デフォルトの木材地色
+      defaultPaintId: 'legacy-paint-1',
+      visible: true
+    };
+
+    const normalObj = {
+      id: 'lumber-normal',
+      name: '角材',
+      type: 'lumber' as const,
+      size: { x: 0.038, y: 0.089, z: 0.5 },
+      position: { x: 0.1, y: 0, z: 0 },
+      quaternion: { x: 0, y: 0, z: 0, w: 1 },
+      color: { r: 0.9, g: 0.8, b: 0.6 },
+      visible: true
+    };
+
+    const group = builder.build(
+      [cylinderObj, normalObj],
+      undefined,
+      undefined,
+      undefined,
+      { snapshot: { id: 'snapshot', name: 'snapshot', isPreset: false, paints: [paintObj], createdAt: '', updatedAt: '' } }
+    );
+
+    const cylMesh = group.children.find(c => c.userData.id === 'cyl-1') as THREE.Mesh;
+    const normalMesh = group.children.find(c => c.userData.id === 'lumber-normal') as THREE.Mesh;
+
+    expect(cylMesh).toBeDefined();
+    expect(normalMesh).toBeDefined();
+
+    // 補強バーは塗料のカラー (r: 0.2, g: 0.4, b: 0.9) が反映されていること
+    const cylMat = cylMesh.material as THREE.MeshStandardMaterial;
+    expect(cylMat.color.r).toBeCloseTo(0.2);
+    expect(cylMat.color.g).toBeCloseTo(0.4);
+    expect(cylMat.color.b).toBeCloseTo(0.9);
+
+    // 未塗装部材はオブジェクト自身のカラー (r: 0.9, g: 0.8, b: 0.6) であること
+    const normalMat = normalMesh.material as THREE.MeshStandardMaterial;
+    expect(normalMat.color.r).toBeCloseTo(0.9);
+    expect(normalMat.color.g).toBeCloseTo(0.8);
+    expect(normalMat.color.b).toBeCloseTo(0.6);
+  });
+
+  it('001_tana.cadiy4 の補強バーに塗料 (ブルー) の color プロパティがレンダリングに反映されること', () => {
+    const filePath = path.resolve(__dirname, '../../testdata/001_tana.cadiy4');
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const parser = new Cadiy4Parser();
+    const data = parser.parse(content);
+
+    const builder = new ModelBuilder();
+    const group = builder.build(
+      data.objects,
+      undefined,
+      data.pictureImageTable,
+      data.polygonMeshTable,
+      data.paint
+    );
+
+    const barObj = data.objects.find(o => o.partName === '補強バー')!;
+    expect(barObj).toBeDefined();
+
+    const barMesh = group.children.find(c => c.userData.id === barObj.id) as THREE.Mesh;
+    expect(barMesh).toBeDefined();
+
+    // 補強バーのマテリアル色がブルー塗料の色 (r: 0.3098..., g: 0.3098..., b: 1) であること
+    const expectedColor = data.paint?.snapshot?.paints?.find(p => p.id === barObj.defaultPaintId)?.color!;
+    expect(expectedColor).toBeDefined();
+
+    const barMat = barMesh.material as THREE.MeshStandardMaterial;
+    expect(barMat.color.r).toBeCloseTo(expectedColor.r);
+    expect(barMat.color.g).toBeCloseTo(expectedColor.g);
+    expect(barMat.color.b).toBeCloseTo(expectedColor.b);
+  });
 });

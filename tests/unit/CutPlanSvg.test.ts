@@ -505,4 +505,47 @@ describe('ViewerUI - 材料取り図(木取り図) SVG描画ロジック', () =>
       }
     }
   });
+
+  it('001_tana.cadiy4 の材料取り図で、同一standardIdの部材が正しくグループ化され、1D角材の斜めカットが反映されること', () => {
+    const filePath = path.resolve(__dirname, '../../testdata/001_tana.cadiy4');
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const parser = new Cadiy4Parser();
+    const data = parser.parse(content);
+    const calculator = new CutListCalculator();
+    const sheets = calculator.calculate(data.cutList, data.objects);
+
+    // 1. シート数は SPF 2x4材、南洋材丸棒、パイン集成材 18mm の3つ
+    expect(sheets).toHaveLength(3);
+
+    // 2. SPF 2x4材 (1D 角材シート)
+    const spfSheet = sheets.find(s => (s.lumberName || '').includes('SPF 2x4'))!;
+    expect(spfSheet).toBeDefined();
+    expect(spfSheet.layout).toBe('1d');
+    expect(spfSheet.items).toHaveLength(2); // 側板 (左) と 側板 (右)
+    expect(spfSheet.items[0].object.partName).toBe('側板 (左)');
+    expect(spfSheet.items[1].object.partName).toBe('側板 (右)');
+
+    const spfSvg = ViewerUI.render1DSheetSvg(spfSheet);
+    // 斜めカット線 (cutplan-kerf-line) と斜めカットラベルが含まれること
+    expect(spfSvg).toContain('cutplan-diag-cut-label');
+    expect(spfSvg).toContain('✂ 斜めカット: 89 × 23.85');
+    // 端材の三角形ポリゴンが含まれること
+    expect(spfSvg).toContain('stroke-dasharray="4,4"');
+
+    // 3. パイン集成材 18mm (2D 板材シート)
+    const boardSheet = sheets.find(s => (s.lumberName || '').includes('パイン集成材'))!;
+    expect(boardSheet).toBeDefined();
+    expect(boardSheet.layout).toBe('2d');
+    // 天板 (上段), パイン集成材 18mm (底板), 棚板 (下段) の3パーツが同じ材料から木取りされること
+    expect(boardSheet.items).toHaveLength(3);
+
+    const boardSvg = ViewerUI.render2DSheetSvg(boardSheet);
+    // 底板 (legacy-1) は mode: "round" なので斜めカットラベルは生成されないこと
+    expect(boardSvg).not.toContain('✂ 斜めカット: 20 × 20');
+
+    // 4. 南洋材丸棒 (1D 角材シート)
+    const cylinderSheet = sheets.find(s => (s.lumberName || '').includes('南洋材丸棒'))!;
+    expect(cylinderSheet).toBeDefined();
+    expect(cylinderSheet.sheetLengthMm).toBe(910); // legacyStandardSize から 910mm が反映されること
+  });
 });

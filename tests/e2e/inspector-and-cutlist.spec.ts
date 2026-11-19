@@ -151,7 +151,7 @@ test.describe('インスペクター表示と材料取り図スクロール要�
     const inspectorCard = page.locator('#inspector-card');
     const inspectorTitle = page.locator('#inspector-title');
 
-    // テスト対象部材のスクリーン座標を画面から計算
+    // テスト対象部材（代表点pos付き）
     const targets = [
       { name: '天板 (上段)', pos: { x: 0.025, y: 0.466, z: 0 } },
       { name: '棚板 (下段)', pos: { x: 0.025, y: 0.243, z: 0 } },
@@ -162,22 +162,15 @@ test.describe('インスペクター表示と材料取り図スクロール要�
     ];
 
     for (const target of targets) {
-      const screenPos = await page.evaluate((pos) => {
+      const screenPos = await page.evaluate((t) => {
         const viewer = (window as any).__VIEWER__;
-        const camera = viewer.camera;
-        const width = viewer.container.clientWidth;
-        const height = viewer.container.clientHeight;
+        return viewer.getObjectScreenPosition(t.name, t.pos);
+      }, target);
 
-        const worldPos = camera.position.clone().set(pos.x, pos.y, pos.z);
-        const projected = worldPos.clone().project(camera);
-        return {
-          x: ((projected.x + 1) * width) / 2,
-          y: ((-projected.y + 1) * height) / 2,
-        };
-      }, target.pos);
+      expect(screenPos).not.toBeNull();
 
       // 対象部材をクリック
-      await canvas.click({ position: { x: Math.round(screenPos.x), y: Math.round(screenPos.y) } });
+      await canvas.click({ position: { x: Math.round(screenPos!.x), y: Math.round(screenPos!.y) } });
 
       // 正しい部材名が表示されていること（「天板 (上段)」などの別の部材に化けないこと）
       await expect(inspectorCard).toHaveClass(/active/);

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CadiyObject, LumberObject, BoardObject, CylinderObject, DimensionObject, TextBoardObject, PictureObject, PictureImageItem, TubeObject, CommentObject, PolygonObject, PolygonMeshItem, PolygonMesh } from '../types/cadiy4';
+import { CadiyObject, LumberObject, BoardObject, CylinderObject, DimensionObject, TextBoardObject, PictureObject, PictureImageItem, TubeObject, CommentObject, PolygonObject, PolygonMeshItem, PolygonMesh, PaintSnapshot, PaintItem, ColorRGB } from '../types/cadiy4';
 import { MaterialFactory } from './MaterialFactory';
 import { TextBoardBuilder } from './TextBoardBuilder';
 import { DimensionBuilder } from './DimensionBuilder';
@@ -14,6 +14,7 @@ export class ModelBuilder {
   private pictureBuilder: PictureBuilder;
   private commentBuilder: CommentBuilder;
   private polygonBuilder: PolygonBuilder;
+  private paintMap = new Map<string, PaintItem>();
 
   constructor(materialFactory?: MaterialFactory) {
     this.materialFactory = materialFactory || new MaterialFactory();
@@ -39,19 +40,59 @@ export class ModelBuilder {
   }
 
   /**
+   * 塗料スナップショット/テーブルをセットする
+   */
+  public setPaintSnapshot(paint?: { snapshot?: PaintSnapshot } | PaintSnapshot | PaintItem[]): void {
+    this.paintMap.clear();
+    if (!paint) return;
+
+    let items: PaintItem[] = [];
+    if (Array.isArray(paint)) {
+      items = paint;
+    } else if ('snapshot' in paint && paint.snapshot?.paints) {
+      items = paint.snapshot.paints;
+    } else if ('paints' in paint && Array.isArray((paint as PaintSnapshot).paints)) {
+      items = (paint as PaintSnapshot).paints!;
+    }
+
+    for (const item of items) {
+      if (item && item.id) {
+        this.paintMap.set(item.id, item);
+      }
+    }
+  }
+
+  /**
+   * 部材に適用する表示色を解決する（塗料指定がある場合は塗料のcolor、それ以外はobj.color）
+   */
+  public resolveObjectColor(obj: CadiyObject): ColorRGB {
+    if (obj.defaultPaintId && this.paintMap.has(obj.defaultPaintId)) {
+      const paint = this.paintMap.get(obj.defaultPaintId)!;
+      if (paint.color) {
+        return paint.color;
+      }
+    }
+    return obj.color;
+  }
+
+  /**
    * オブジェクトリストからThree.jsのGroupを生成する
    */
   public build(
     objects: CadiyObject[],
     isObjectVisible?: (objectId: string) => boolean,
     pictureImageTable?: PictureImageItem[],
-    polygonMeshTable?: PolygonMeshItem[] | Record<string, PolygonMesh>
+    polygonMeshTable?: PolygonMeshItem[] | Record<string, PolygonMesh>,
+    paint?: { snapshot?: PaintSnapshot } | PaintSnapshot | PaintItem[]
   ): THREE.Group {
     if (pictureImageTable) {
       this.setPictureImageTable(pictureImageTable);
     }
     if (polygonMeshTable) {
       this.setPolygonMeshTable(polygonMeshTable);
+    }
+    if (paint) {
+      this.setPaintSnapshot(paint);
     }
 
     const rootGroup = new THREE.Group();
@@ -133,9 +174,10 @@ export class ModelBuilder {
 
     if (!geometry) return null;
 
+    const effectiveColor = this.resolveObjectColor(obj);
     const material = obj.dummy
-      ? this.materialFactory.getWireframeMaterial(obj.color)
-      : this.materialFactory.getWoodMaterial(obj.color);
+      ? this.materialFactory.getWireframeMaterial(effectiveColor)
+      : this.materialFactory.getWoodMaterial(effectiveColor);
     const mesh = new THREE.Mesh(geometry, material);
 
     mesh.name = obj.partName || obj.name;

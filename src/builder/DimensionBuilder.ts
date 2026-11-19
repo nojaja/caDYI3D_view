@@ -49,6 +49,12 @@ export class DimensionBuilder {
     group.visible = obj.visible !== false;
 
     group.userData = { cadiyObject: obj };
+
+    // 寸法線およびラベルは3Dレイキャスト交差判定の対象外とする（部材クリックの邪魔にならないようにする）
+    group.traverse((child) => {
+      child.raycast = () => {};
+    });
+
     return group;
   }
 

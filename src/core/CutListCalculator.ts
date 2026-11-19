@@ -190,66 +190,101 @@ export class CutListCalculator {
       return true;
     });
 
-    for (let i = 0; i < unplacedObjects.length; i++) {
-      const obj = unplacedObjects[i];
-      const dimX = obj.size.x * 1000;
-      const dimY = obj.size.y * 1000;
-      const dimZ = obj.size.z * 1000;
-
-      const isBoard = obj.type === 'board';
-      let lengthMm: number;
-      let widthMm: number;
-
-      if (isBoard) {
-        const std = this.parseStandardDimensions(obj, defaultLengthMm);
-        if (std.widthMm > 0 && std.lengthMm > 0) {
-          if (dimX <= std.widthMm && dimZ <= std.lengthMm) {
-            widthMm = dimX;
-            lengthMm = dimZ;
-          } else if (dimZ <= std.widthMm && dimX <= std.lengthMm) {
-            widthMm = dimZ;
-            lengthMm = dimX;
-          } else {
-            lengthMm = Math.max(dimX, dimZ);
-            widthMm = Math.min(dimX, dimZ);
-          }
-        } else {
-          lengthMm = Math.max(dimX, dimZ);
-          widthMm = Math.min(dimX, dimZ);
+    if (unplacedObjects.length > 0) {
+      // 未配置オブジェクトも同一材料規格ごとにグループ化
+      const unplacedGroupMap = new Map<string, { representativeObj: CadiyObject; objects: CadiyObject[] }>();
+      for (const obj of unplacedObjects) {
+        const matKey = this.getMaterialKey(obj);
+        if (!unplacedGroupMap.has(matKey)) {
+          unplacedGroupMap.set(matKey, { representativeObj: obj, objects: [] });
         }
-      } else {
-        lengthMm = Math.max(dimX, dimY, dimZ);
-        widthMm = Math.min(dimX, dimY);
+        unplacedGroupMap.get(matKey)!.objects.push(obj);
       }
 
-      const stdDim = this.parseStandardDimensions(obj, lengthMm);
-      const sheetLengthMm = Math.max(stdDim.lengthMm, lengthMm);
-      const sheetWidthMm = Math.max(stdDim.widthMm, widthMm);
+      let extraBaseId = groupMap.size;
+      for (const entry of unplacedGroupMap.values()) {
+        const refObj = entry.representativeObj;
+        const isBoard = refObj.type === 'board';
+        const stdDim = this.parseStandardDimensions(refObj, defaultLengthMm);
 
-      const item: CutPlanItem = {
-        object: obj,
-        positionMm: { x: 0, z: 0 },
-        lengthMm,
-        widthMm,
-        isBoard,
-        edgeCuts: (obj as any).edgeCuts,
-      };
+        const items: CutPlanItem[] = [];
+        let currentOffsetZ = 0;
+        let currentOffsetX = 0;
 
-      const remainingLengthMm = Math.max(0, sheetLengthMm - lengthMm);
-      const yieldRatePercent = sheetLengthMm > 0 ? (lengthMm / sheetLengthMm) * 100 : 100;
+        for (const obj of entry.objects) {
+          const dimX = obj.size.x * 1000;
+          const dimY = obj.size.y * 1000;
+          const dimZ = obj.size.z * 1000;
 
-      resultSheets.push({
-        baseId: i,
-        cutWidthMm,
-        lumberName: obj.name || (isBoard ? '板材' : '角材'),
-        layout: isBoard ? '2d' : '1d',
-        sheetWidthMm,
-        sheetLengthMm,
-        items: [item],
-        usedLengthMm: lengthMm,
-        remainingLengthMm,
-        yieldRatePercent,
-      });
+          let lengthMm: number;
+          let widthMm: number;
+
+          if (isBoard) {
+            if (stdDim.widthMm > 0 && stdDim.lengthMm > 0) {
+              if (dimX <= stdDim.widthMm && dimZ <= stdDim.lengthMm) {
+                widthMm = dimX;
+                lengthMm = dimZ;
+              } else if (dimZ <= stdDim.widthMm && dimX <= stdDim.lengthMm) {
+                widthMm = dimZ;
+                lengthMm = dimX;
+              } else {
+                lengthMm = Math.max(dimX, dimZ);
+                widthMm = Math.min(dimX, dimZ);
+              }
+            } else {
+              lengthMm = Math.max(dimX, dimZ);
+              widthMm = Math.min(dimX, dimZ);
+            }
+          } else {
+            lengthMm = Math.max(dimX, dimY, dimZ);
+            widthMm = Math.min(dimX, dimY);
+          }
+
+          items.push({
+            object: obj,
+            positionMm: { x: currentOffsetX, z: currentOffsetZ },
+            lengthMm,
+            widthMm,
+            isBoard,
+            edgeCuts: (obj as any).edgeCuts,
+          });
+
+          if (isBoard) {
+            currentOffsetX += widthMm + cutWidthMm;
+          } else {
+            currentOffsetZ += lengthMm + cutWidthMm;
+          }
+        }
+
+        const usedLengthMm = Math.max(...items.map((it) => it.positionMm.z + it.lengthMm));
+        const maxPartWidth = Math.max(...items.map((it) => it.positionMm.x + it.widthMm));
+        const sheetLengthMm = Math.max(stdDim.lengthMm, usedLengthMm);
+        const sheetWidthMm = isBoard ? Math.max(stdDim.widthMm, maxPartWidth) : stdDim.widthMm;
+        const remainingLengthMm = Math.max(0, sheetLengthMm - usedLengthMm);
+
+        let yieldRatePercent = 0;
+        if (isBoard) {
+          const totalArea = sheetWidthMm * sheetLengthMm;
+          const netArea = items.reduce((acc, it) => acc + it.widthMm * it.lengthMm, 0);
+          yieldRatePercent = totalArea > 0 ? (netArea / totalArea) * 100 : 0;
+        } else {
+          const netLength = items.reduce((acc, it) => acc + it.lengthMm, 0);
+          yieldRatePercent = sheetLengthMm > 0 ? (netLength / sheetLengthMm) * 100 : 100;
+        }
+
+        resultSheets.push({
+          baseId: extraBaseId++,
+          cutWidthMm,
+          lumberName: refObj.standardRef?.name || refObj.name || (isBoard ? '板材' : '角材'),
+          layout: isBoard ? '2d' : '1d',
+          sheetWidthMm,
+          sheetLengthMm,
+          items,
+          usedLengthMm,
+          remainingLengthMm,
+          yieldRatePercent,
+        });
+      }
     }
 
     return resultSheets;
@@ -283,6 +318,18 @@ export class CutListCalculator {
     const stdId = String(obj.standardRef?.standardId || '');
     const stdName = String(obj.standardRef?.name || obj.name || '');
     const text = `${stdId} ${stdName}`;
+
+    // 0. legacyStandardSize が存在する場合はその寸法 (m -> mm) を優先参照
+    if ((obj as any).legacyStandardSize) {
+      const lss = (obj as any).legacyStandardSize;
+      const lx = Math.round(Number(lss.x || 0) * 1000);
+      const ly = Math.round(Number(lss.y || 0) * 1000);
+      const lz = Math.round(Number(lss.z || 0) * 1000);
+      if (lz > 0) {
+        const lWidth = Math.max(lx, ly);
+        return { widthMm: lWidth > 0 ? lWidth : Math.round(obj.size.x * 1000), lengthMm: lz };
+      }
+    }
 
     // 1. 2D 板材の寸法表記 (3桁以上の数字: 例: 600x1820, 910x1820, 910x9x1820)
     const match3D = text.match(/(\d+)[x×](\d+)[x×](\d+)/i);

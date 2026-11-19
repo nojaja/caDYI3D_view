@@ -150,20 +150,11 @@ test.describe('オブジェクト選択状態・ハイライト・長押しエ�
     const inspectorCard = page.locator('#inspector-card');
 
     // 「天板 (上段)」のスクリーン座標を計算
-    const pos = { x: 0.025, y: 0.466, z: 0 };
-    const screenPos = await page.evaluate((p) => {
+    const screenPos = await page.evaluate(() => {
       const viewer = (window as any).__VIEWER__;
-      const camera = viewer.camera;
-      const width = viewer.container.clientWidth;
-      const height = viewer.container.clientHeight;
-
-      const worldPos = camera.position.clone().set(p.x, p.y, p.z);
-      const projected = worldPos.clone().project(camera);
-      return {
-        x: ((projected.x + 1) * width) / 2,
-        y: ((-projected.y + 1) * height) / 2,
-      };
-    }, pos);
+      return viewer.getObjectScreenPosition('天板 (上段)');
+    });
+    expect(screenPos).not.toBeNull();
 
     // 短いタップ（100ms）では選択されないこと
     await canvas.tap({ position: { x: Math.round(screenPos.x), y: Math.round(screenPos.y) } });
@@ -216,20 +207,11 @@ test.describe('オブジェクト選択状態・ハイライト・長押しエ�
       });
     } else {
       // PC表示時: 3Dビュー上の「天板 (上段)」をクリックしてインスペクターを表示
-      const pos = { x: 0.025, y: 0.466, z: 0 };
-      const screenPos = await page.evaluate((p) => {
+      const screenPos = await page.evaluate(() => {
         const viewer = (window as any).__VIEWER__;
-        const camera = viewer.camera;
-        const width = viewer.container.clientWidth;
-        const height = viewer.container.clientHeight;
-
-        const worldPos = camera.position.clone().set(p.x, p.y, p.z);
-        const projected = worldPos.clone().project(camera);
-        return {
-          x: ((projected.x + 1) * width) / 2,
-          y: ((-projected.y + 1) * height) / 2,
-        };
-      }, pos);
+        return viewer.getObjectScreenPosition('天板 (上段)');
+      });
+      expect(screenPos).not.toBeNull();
 
       await canvas.click({ position: { x: Math.round(screenPos.x), y: Math.round(screenPos.y) } });
     }

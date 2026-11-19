@@ -148,7 +148,8 @@ export class Viewer {
       data.objects,
       isObjectVisible,
       data.pictureImageTable,
-      data.polygonMeshTable
+      data.polygonMeshTable,
+      data.paint
     );
     this.scene.add(this.currentModelGroup);
 
@@ -262,6 +263,116 @@ export class Viewer {
     if (this.onObjectSelected) {
       this.onObjectSelected(obj);
     }
+  }
+
+  /**
+   * オブジェクトIDまたはパーツ名から、現在のカメラ視点において
+   * クリック時にそのオブジェクト自身が最前面でヒットするスクリーン座標 (px) を取得する
+   * E2EテストやUIクリック連携用
+   */
+  public getObjectScreenPosition(objectIdOrName: string): { x: number; y: number } | null {
+    if (!this.currentModelGroup) return null;
+    let targetMesh: THREE.Mesh | null = null;
+    this.currentModelGroup.traverse((child) => {
+      if (!targetMesh && (child as THREE.Mesh).isMesh && child.userData?.cadiyObject) {
+        const obj = child.userData.cadiyObject as CadiyObject;
+        if (obj.id === objectIdOrName || (obj.partName || obj.name) === objectIdOrName) {
+          targetMesh = child as THREE.Mesh;
+        }
+      }
+    });
+
+    if (!targetMesh) return null;
+    const mesh: THREE.Mesh = targetMesh;
+
+    const width = this.container.clientWidth;
+    const height = this.container.clientHeight;
+    this.camera.updateMatrixWorld();
+
+    const box = new THREE.Box3().setFromObject(mesh);
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+
+    // 候補点（中心、各面の中心、各軸オフセット点群、ジオメトリ頂点群）からRaycastで最前面に当たる点を探す
+    const candidates: THREE.Vector3[] = [
+      // 表面中心点
+      new THREE.Vector3(box.min.x, center.y, center.z),
+      new THREE.Vector3(box.max.x, center.y, center.z),
+      new THREE.Vector3(center.x, box.min.y, center.z),
+      new THREE.Vector3(center.x, box.max.y, center.z),
+      new THREE.Vector3(center.x, center.y, box.min.z),
+      new THREE.Vector3(center.x, center.y, box.max.z),
+      // 内部・オフセット点
+      center,
+      new THREE.Vector3(center.x, center.y + size.y * 0.25, center.z),
+      new THREE.Vector3(center.x, center.y - size.y * 0.25, center.z),
+      new THREE.Vector3(center.x + size.x * 0.25, center.y, center.z),
+      new THREE.Vector3(center.x - size.x * 0.25, center.y, center.z),
+      new THREE.Vector3(center.x + size.x * 0.4, center.y, center.z),
+      new THREE.Vector3(center.x - size.x * 0.4, center.y, center.z),
+      new THREE.Vector3(center.x, center.y, center.z + size.z * 0.25),
+      new THREE.Vector3(center.x, center.y, center.z - size.z * 0.25),
+      new THREE.Vector3(center.x, center.y, center.z + size.z * 0.4),
+      new THREE.Vector3(center.x, center.y, center.z - size.z * 0.4),
+      new THREE.Vector3(center.x, center.y + size.y * 0.35, center.z),
+      new THREE.Vector3(center.x, center.y - size.y * 0.35, center.z),
+    ];
+
+    // ジオメトリの頂点群も候補点に追加
+    const geom = mesh.geometry as THREE.BufferGeometry | undefined;
+    if (geom && geom.attributes.position) {
+      mesh.updateMatrixWorld();
+      const posAttr = geom.attributes.position;
+      const step = Math.max(1, Math.floor(posAttr.count / 16));
+      for (let i = 0; i < posAttr.count; i += step) {
+        const v = new THREE.Vector3().fromBufferAttribute(posAttr, i);
+        v.applyMatrix4(mesh.matrixWorld);
+        candidates.push(v);
+      }
+    }
+
+    const mouse = new THREE.Vector2();
+    const raycaster = new THREE.Raycaster();
+    const targetObj = mesh.userData?.cadiyObject as CadiyObject;
+
+    for (let i = 0; i < candidates.length; i++) {
+      const pt = candidates[i];
+      const projected = pt.clone().project(this.camera);
+      if (projected.x < -1 || projected.x > 1 || projected.y < -1 || projected.y > 1) continue;
+
+      const pixelX = Math.round(((projected.x + 1) * width) / 2);
+      const pixelY = Math.round(((-projected.y + 1) * height) / 2);
+
+      // 実際にクリックされる丸め後ピクセル座標でRaycastをテスト
+      mouse.x = (pixelX / width) * 2 - 1;
+      mouse.y = -(pixelY / height) * 2 + 1;
+      raycaster.setFromCamera(mouse, this.camera);
+      const hits: THREE.Intersection[] = raycaster.intersectObjects(this.currentModelGroup.children, true);
+
+      for (const hit of hits) {
+        let curr: THREE.Object3D | null = hit.object;
+        while (curr && !curr.userData?.cadiyObject && curr !== this.currentModelGroup) {
+          curr = curr.parent;
+        }
+        if (curr && curr.userData?.cadiyObject) {
+          const hitObj = curr.userData.cadiyObject as CadiyObject;
+          if (hitObj.type === 'dimension' || hitObj.type === 'comment') continue; // 注釈・寸法線は透過
+          if (hitObj.id === targetObj.id || (targetObj.partName && hitObj.partName === targetObj.partName)) {
+            return { x: pixelX, y: pixelY };
+          }
+          break; // 最前面の有効部材が自分以外だった場合はこの候補点はスキップ
+        }
+      }
+    }
+
+    // 最前面ヒットが見つからない場合は中心の投影を返す
+    const fallback = center.clone().project(this.camera);
+    return {
+      x: ((fallback.x + 1) * width) / 2,
+      y: ((-fallback.y + 1) * height) / 2,
+    };
   }
 
   private findMeshByObjectId(objectId: string): THREE.Mesh | null {
@@ -520,7 +631,9 @@ export class Viewer {
         curr = curr.parent;
       }
       if (curr && curr.userData?.cadiyObject) {
-        return curr.userData.cadiyObject;
+        const cObj = curr.userData.cadiyObject as CadiyObject;
+        if (cObj.type === 'dimension' || cObj.type === 'comment') continue; // 寸法線・注釈はクリック選択対象外
+        return cObj;
       }
     }
     return null;
