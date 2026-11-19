@@ -37,6 +37,11 @@ export class ViewerUI {
   private isSelectingFrom3D = false;
   private isInspectorOpen = false;
 
+  private cutlistTouchTimer: any = null;
+  private cutlistTouchStartX = 0;
+  private cutlistTouchStartY = 0;
+  private isCutlistTouchDragging = false;
+
   constructor(viewer: Viewer) {
     this.viewer = viewer;
     this.modelLoader = new ModelLoader();
@@ -165,16 +170,89 @@ export class ViewerUI {
       }
     });
 
-    // 7. 材料取り図内のパーツクリック/タップで選択状態にする
-    this.cutlistSheetsContainer.addEventListener('click', (e) => {
+    // 7. 材料取り図内のパーツクリック/タップで選択状態にし、何もない箇所をクリック/長押しタップで解除する
+    this.cutlistViewContainer.addEventListener('click', (e) => {
+      if (this.isCutlistTouchDragging) return;
       const target = (e.target as HTMLElement).closest('[data-object-id]');
       if (target) {
         const objId = target.getAttribute('data-object-id');
         if (objId) {
           this.layerManager.selectObject(objId);
         }
+      } else {
+        // 何もない箇所をクリックした場合、選択解除
+        this.layerManager.selectObject(null);
       }
     });
+
+    // 材料取り図: スマホ長押しタップ判定 (何もない箇所の長押しタップで選択解除、パーツ長押しで選択)
+    this.cutlistViewContainer.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) {
+        this.cancelCutlistLongPress();
+        return;
+      }
+      const touch = e.touches[0];
+      this.cutlistTouchStartX = touch.clientX;
+      this.cutlistTouchStartY = touch.clientY;
+      this.isCutlistTouchDragging = false;
+
+      this.cutlistTouchTimer = setTimeout(() => {
+        this.completeCutlistLongPress(touch.clientX, touch.clientY);
+      }, 500);
+    }, { passive: true });
+
+    this.cutlistViewContainer.addEventListener('touchmove', (e) => {
+      if (!this.cutlistTouchTimer) return;
+      if (e.touches.length !== 1) {
+        this.cancelCutlistLongPress();
+        return;
+      }
+      const touch = e.touches[0];
+      const dx = touch.clientX - this.cutlistTouchStartX;
+      const dy = touch.clientY - this.cutlistTouchStartY;
+      if (Math.hypot(dx, dy) > 10) {
+        this.isCutlistTouchDragging = true;
+        this.cancelCutlistLongPress();
+      }
+    }, { passive: true });
+
+    this.cutlistViewContainer.addEventListener('touchend', () => {
+      this.cancelCutlistLongPress();
+      setTimeout(() => {
+        this.isCutlistTouchDragging = false;
+      }, 300);
+    }, { passive: true });
+
+    this.cutlistViewContainer.addEventListener('touchcancel', () => {
+      this.cancelCutlistLongPress();
+      setTimeout(() => {
+        this.isCutlistTouchDragging = false;
+      }, 300);
+    }, { passive: true });
+  }
+
+  private cancelCutlistLongPress(): void {
+    if (this.cutlistTouchTimer) {
+      clearTimeout(this.cutlistTouchTimer);
+      this.cutlistTouchTimer = null;
+    }
+  }
+
+  private completeCutlistLongPress(clientX: number, clientY: number): void {
+    this.cancelCutlistLongPress();
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try { navigator.vibrate(40); } catch (_) {}
+    }
+    const el = document.elementFromPoint(clientX, clientY);
+    const target = el ? el.closest('[data-object-id]') : null;
+    if (target) {
+      const objId = target.getAttribute('data-object-id');
+      if (objId) {
+        this.layerManager.selectObject(objId);
+      }
+    } else {
+      this.layerManager.selectObject(null);
+    }
   }
 
   private initViewModeEvents(): void {
@@ -828,9 +906,8 @@ export class ViewerUI {
         const obj = this.viewer.getObjectById(objectId);
         this.handleObjectSelected(obj, 'layerTree');
       } else {
-        if (!this.isInspectorOpen) {
-          this.hideInspector();
-        }
+        this.hideInspector();
+        this.isInspectorOpen = false;
       }
     });
   }
@@ -1048,35 +1125,31 @@ export class ViewerUI {
     const rotText = `X: ${props.rotationDeg.x}°, Y: ${props.rotationDeg.y}°, Z: ${props.rotationDeg.z}°`;
 
     const detailHtml = `
-      <div class="inspector-row">
-        <span class="inspector-label">名称:</span>
-        <span class="inspector-value">${props.name}</span>
-      </div>
-      <div class="inspector-row">
+      <div class="inspector-row inspector-row-standard">
         <span class="inspector-label">規格:</span>
         <span class="inspector-value">${props.standardName}</span>
       </div>
-      <div class="inspector-row">
+      <div class="inspector-row inspector-row-weight">
         <span class="inspector-label">重量:</span>
         <span class="inspector-value">${weightText}</span>
       </div>
-      <div class="inspector-row">
+      <div class="inspector-row inspector-row-price">
         <span class="inspector-label">価格:</span>
         <span class="inspector-value">${priceText}</span>
       </div>
-      <div class="inspector-row">
+      <div class="inspector-row inspector-row-position">
         <span class="inspector-label">位置:</span>
         <span class="inspector-value">${posText}</span>
       </div>
-      <div class="inspector-row">
+      <div class="inspector-row inspector-row-size">
         <span class="inspector-label">サイズ:</span>
         <span class="inspector-value">${sizeText}</span>
       </div>
-      <div class="inspector-row">
+      <div class="inspector-row inspector-row-rotation">
         <span class="inspector-label">傾き:</span>
         <span class="inspector-value">${rotText}</span>
       </div>
-      <div class="inspector-row">
+      <div class="inspector-row inspector-row-processing">
         <span class="inspector-label">形状加工:</span>
         <span class="inspector-value">${props.processingInfo}</span>
       </div>
@@ -1092,9 +1165,16 @@ export class ViewerUI {
    */
   public handleObjectSelected(object: CadiyObject | null, source: 'viewer3d' | 'layerTree' = 'viewer3d'): void {
     if (!object) {
-      // 閉じるボタンが押されるまではインスペクターを表示し続ける（何もない箇所のクリック等では閉じない）
-      if (!this.isInspectorOpen) {
-        this.hideInspector();
+      // 選択解除時: インスペクターを閉じ、選択状態をリセット
+      this.hideInspector();
+      this.isInspectorOpen = false;
+      if (source === 'viewer3d') {
+        this.isSelectingFrom3D = true;
+        try {
+          this.layerManager.selectObject(null);
+        } finally {
+          this.isSelectingFrom3D = false;
+        }
       }
       return;
     }

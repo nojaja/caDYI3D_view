@@ -900,7 +900,23 @@ html, body {
     left: 8px;
     right: 8px;
     width: auto;
-    max-height: 220px;
+    max-height: 110px;
+    padding: 8px 12px;
+  }
+
+  .inspector-card .inspector-header {
+    margin-bottom: 6px;
+  }
+
+  .inspector-card .inspector-row {
+    margin-bottom: 4px;
+  }
+
+  /* スマホ表示時: 価格・位置・傾き行を非表示 */
+  .inspector-card .inspector-row-price,
+  .inspector-card .inspector-row-position,
+  .inspector-card .inspector-row-rotation {
+    display: none !important;
   }
 
   /* 材料取り図: スマホ表示スタイル */

@@ -199,17 +199,18 @@ test.describe('オブジェクト選択状態・ハイライト・長押しエ�
     await expect(page.locator('#inspector-title')).toHaveText('天板 (上段)');
   });
 
-  test('4. inspector-card が一度表示されたら閉じるボタン押下まで表示し続け、3Dview以外の時は一時非表示になり戻ると再表示されること', async ({ page }, testInfo) => {
+  test('4. inspector-cardの表示要件（名称行削除、スマホで高さ半分・価格/位置/傾き非表示、モード切替時の一時非表示）の検証', async ({ page }, testInfo) => {
     await page.goto('/');
     await page.waitForFunction(() => (window as any).__VIEWER_READY__ === true);
 
     const canvas = page.locator('#viewer-container canvas');
     const inspectorCard = page.locator('#inspector-card');
     const inspectorTitle = page.locator('#inspector-title');
+    const inspectorDetail = page.locator('#inspector-detail');
 
     const isMobile = testInfo.project.name.includes('mobile');
     if (isMobile) {
-      // スマホ表示時: レイヤー項目タップまたは selectObjectById でオブジェクトを選択してインスペクターを表示
+      // スマホ表示時: オブジェクトを選択してインスペクターを表示
       await page.evaluate(() => {
         (window as any).__VIEWER__.selectObjectById('legacy-9');
       });
@@ -235,10 +236,29 @@ test.describe('オブジェクト選択状態・ハイライト・長押しエ�
     await expect(inspectorCard).toHaveClass(/active/);
     await expect(inspectorTitle).toHaveText('天板 (上段)');
 
-    if (!isMobile) {
-      // 別のオブジェクトのない空間（レイヤーパネルとインスペクターの間の上部中央領域）をクリックしても、カードは閉じずに表示され続けること
-      await canvas.click({ position: { x: 450, y: 150 } });
-      await expect(inspectorCard).toHaveClass(/active/);
+    // 要件: PC表示・スマホ表示ともに「名称」行が削除されていること
+    await expect(inspectorDetail).not.toContainText('名称:');
+
+    if (isMobile) {
+      // 要件: スマホ表示時は inspector-card の高さが半分 (max-height: 110px)
+      const maxHeight = await inspectorCard.evaluate((el) => window.getComputedStyle(el).maxHeight);
+      expect(maxHeight).toBe('110px');
+
+      // 要件: スマホ表示時は「価格」「位置」「傾き」行が表示されないこと (display: none)
+      const priceDisplay = await page.locator('.inspector-row-price').evaluate((el) => window.getComputedStyle(el).display);
+      const posDisplay = await page.locator('.inspector-row-position').evaluate((el) => window.getComputedStyle(el).display);
+      const rotDisplay = await page.locator('.inspector-row-rotation').evaluate((el) => window.getComputedStyle(el).display);
+      expect(priceDisplay).toBe('none');
+      expect(posDisplay).toBe('none');
+      expect(rotDisplay).toBe('none');
+    } else {
+      // PC表示時は「価格」「位置」「傾き」行が表示されていること
+      const priceDisplay = await page.locator('.inspector-row-price').evaluate((el) => window.getComputedStyle(el).display);
+      const posDisplay = await page.locator('.inspector-row-position').evaluate((el) => window.getComputedStyle(el).display);
+      const rotDisplay = await page.locator('.inspector-row-rotation').evaluate((el) => window.getComputedStyle(el).display);
+      expect(priceDisplay).not.toBe('none');
+      expect(posDisplay).not.toBe('none');
+      expect(rotDisplay).not.toBe('none');
     }
 
     // 材料取り図モードに切り替え
@@ -267,5 +287,141 @@ test.describe('オブジェクト選択状態・ハイライト・長押しエ�
 
     // 閉じるボタンが押されたら非表示になること
     await expect(inspectorCard).not.toHaveClass(/active/);
+  });
+
+  test('5. 3Dviewで何もない箇所をクリック（PC）、もしくは長押しタップ（スマホ）で選択状態が解除されること', async ({ page }, testInfo) => {
+    await page.goto('/');
+    await page.waitForFunction(() => (window as any).__VIEWER_READY__ === true);
+
+    const canvas = page.locator('#viewer-container canvas');
+    const inspectorCard = page.locator('#inspector-card');
+
+    // まずオブジェクトを選択
+    await page.evaluate(() => {
+      (window as any).__VIEWER__.selectObjectById('legacy-9');
+    });
+    await expect(inspectorCard).toHaveClass(/active/);
+
+    const isMobile = testInfo.project.name.includes('mobile');
+    if (isMobile) {
+      // スマホ表示時: 何もない箇所（右上空き領域）を長押しタップ（550ms）して解除
+      const emptyPos = { x: 300, y: 150 };
+      await canvas.evaluate((el, pt) => {
+        const touch = new Touch({
+          identifier: 2,
+          target: el,
+          clientX: pt.x,
+          clientY: pt.y,
+          pageX: pt.x,
+          pageY: pt.y,
+        });
+        el.dispatchEvent(new TouchEvent('touchstart', {
+          touches: [touch],
+          targetTouches: [touch],
+          changedTouches: [touch],
+          bubbles: true,
+          cancelable: true,
+        }));
+      }, emptyPos);
+
+      await page.waitForTimeout(550);
+      await canvas.evaluate((el, pt) => {
+        const touch = new Touch({
+          identifier: 2,
+          target: el,
+          clientX: pt.x,
+          clientY: pt.y,
+          pageX: pt.x,
+          pageY: pt.y,
+        });
+        el.dispatchEvent(new TouchEvent('touchend', {
+          touches: [],
+          targetTouches: [],
+          changedTouches: [touch],
+          bubbles: true,
+          cancelable: true,
+        }));
+      }, emptyPos);
+    } else {
+      // PC表示時: 何もない空間（上部中央）をクリックして解除
+      await canvas.click({ position: { x: 450, y: 150 } });
+    }
+
+    // 選択状態が解除され、inspector-card が非表示になること
+    await expect(inspectorCard).not.toHaveClass(/active/);
+
+    // 3Dハイライトも解除されていること
+    const isHighlighted = await page.evaluate(() => {
+      const viewer = (window as any).__VIEWER__;
+      const mesh = (viewer as any).findMeshByObjectId('legacy-9');
+      return mesh.material.opacity === 0.5;
+    });
+    expect(isHighlighted).toBe(false);
+  });
+
+  test('6. 材料取り図で何もない箇所をクリック（PC）、もしくは長押しタップ（スマホ）で選択状態が解除されること', async ({ page }, testInfo) => {
+    await page.goto('/');
+    await page.waitForFunction(() => (window as any).__VIEWER_READY__ === true);
+
+    // 材料取り図モードに切り替え
+    await page.click('#mode-btn-cutlist');
+    await expect(page.locator('#cutlist-view-container')).toBeVisible();
+
+    // 最初のパーツをクリックして選択
+    const part = page.locator('.cutplan-svg-part').first();
+    await part.click({ force: true });
+    await expect(part).toHaveClass(/selected/);
+
+    const isMobile = testInfo.project.name.includes('mobile');
+    const cutlistContainer = page.locator('#cutlist-sheets-container');
+
+    if (isMobile) {
+      // スマホ表示時: パーツ以外の余白部分を長押しタップ（550ms）
+      const box = await cutlistContainer.boundingBox();
+      const emptyPt = box ? { x: Math.round(box.x + box.width - 20), y: Math.round(box.y + box.height - 50) } : { x: 300, y: 500 };
+
+      await cutlistContainer.evaluate((el, pt) => {
+        const touch = new Touch({
+          identifier: 3,
+          target: el,
+          clientX: pt.x,
+          clientY: pt.y,
+          pageX: pt.x,
+          pageY: pt.y,
+        });
+        el.dispatchEvent(new TouchEvent('touchstart', {
+          touches: [touch],
+          targetTouches: [touch],
+          changedTouches: [touch],
+          bubbles: true,
+          cancelable: true,
+        }));
+      }, emptyPt);
+
+      await page.waitForTimeout(550);
+      await cutlistContainer.evaluate((el, pt) => {
+        const touch = new Touch({
+          identifier: 3,
+          target: el,
+          clientX: pt.x,
+          clientY: pt.y,
+          pageX: pt.x,
+          pageY: pt.y,
+        });
+        el.dispatchEvent(new TouchEvent('touchend', {
+          touches: [],
+          targetTouches: [],
+          changedTouches: [touch],
+          bubbles: true,
+          cancelable: true,
+        }));
+      }, emptyPt);
+    } else {
+      // PC表示時: 何もないコンテナ余白部分（ヘッダー余白等）をクリック
+      await page.click('.cutlist-title');
+    }
+
+    // 材料取り図上のパーツの .selected が解除されていること
+    await expect(part).not.toHaveClass(/selected/);
   });
 });

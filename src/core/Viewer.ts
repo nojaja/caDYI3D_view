@@ -420,12 +420,8 @@ export class Viewer {
     this.mouse.x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
     this.mouse.y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
 
-    // タッチ位置のオブジェクトを判定
+    // タッチ位置のオブジェクトを判定 (オブジェクトがない場合は null で長押し解除)
     const targetObj = this.getIntersectedObject();
-    if (!targetObj) {
-      this.cancelLongPress();
-      return;
-    }
 
     this.longPressTarget = targetObj;
     this.startLongPressIndicator(touch.clientX, touch.clientY);
@@ -473,14 +469,12 @@ export class Viewer {
   private completeLongPress(): void {
     const target = this.longPressTarget;
     this.cancelLongPress();
-    if (target) {
-      this.showLongPressCompleted(this.touchStartX, this.touchStartY);
-      if (typeof navigator !== 'undefined' && navigator.vibrate) {
-        try { navigator.vibrate(40); } catch (_) {}
-      }
-      if (this.onObjectSelected) {
-        this.onObjectSelected(target);
-      }
+    this.showLongPressCompleted(this.touchStartX, this.touchStartY);
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try { navigator.vibrate(40); } catch (_) {}
+    }
+    if (this.onObjectSelected) {
+      this.onObjectSelected(target);
     }
   }
 

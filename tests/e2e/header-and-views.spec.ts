@@ -121,15 +121,20 @@ test.describe('caDIY3D Web Viewer - ヘッダ・表示モード・レイヤー�
       expect(box.x + box.width).toBeGreaterThan(viewport.width - 100);
     }
 
-    // 必須プロパティ（規格、重量、価格、名称、位置、サイズ、傾き、形状加工）が表示されていること
+    // タイトルに名称が表示され、詳細プロパティから「名称」行が削除されていること
+    await expect(page.locator('#inspector-title')).toHaveText('天板 (上段)');
     const inspectorDetail = page.locator('#inspector-detail');
-    await expect(inspectorDetail).toContainText('名称');
+    await expect(inspectorDetail).not.toContainText('名称:');
     await expect(inspectorDetail).toContainText('規格');
     await expect(inspectorDetail).toContainText('重量');
-    await expect(inspectorDetail).toContainText('価格');
-    await expect(inspectorDetail).toContainText('位置');
     await expect(inspectorDetail).toContainText('サイズ');
-    await expect(inspectorDetail).toContainText('傾き');
     await expect(inspectorDetail).toContainText('形状加工');
+
+    if (!isMobile) {
+      // PC表示時のみ価格、位置、傾きが表示されること
+      await expect(inspectorDetail).toContainText('価格');
+      await expect(inspectorDetail).toContainText('位置');
+      await expect(inspectorDetail).toContainText('傾き');
+    }
   });
 });
