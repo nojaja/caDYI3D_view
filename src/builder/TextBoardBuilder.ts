@@ -6,35 +6,86 @@ export class TextBoardBuilder {
    * textBoardオブジェクトからThree.jsのMeshを生成する
    */
   public build(obj: TextBoardObject): THREE.Mesh {
-    const width = Math.max(obj.size.x, 0.05);
-    const height = Math.max(obj.size.z, 0.02);
+    const width = Math.max(obj.size.x, 0.01);
+    const height = Math.max(obj.size.z, 0.01);
 
     let material: THREE.Material;
 
     if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
       const canvas = document.createElement('canvas');
-      canvas.width = 512;
-      canvas.height = 128;
+      const aspect = width / height;
+      const baseRes = 512;
+      let cw: number;
+      let ch: number;
+
+      if (width >= height) {
+        cw = baseRes;
+        ch = Math.max(Math.round(baseRes / aspect), 32);
+      } else {
+        ch = baseRes;
+        cw = Math.max(Math.round(baseRes * aspect), 32);
+      }
+
+      canvas.width = cw;
+      canvas.height = ch;
       const ctx = canvas.getContext('2d');
 
       if (ctx) {
+        ctx.clearRect(0, 0, cw, ch);
+
         const bg = obj.backgroundColor || { r: 0.95, g: 0.95, b: 0.95, a: 1 };
-        ctx.fillStyle = `rgba(${Math.round(bg.r * 255)}, ${Math.round(bg.g * 255)}, ${Math.round(bg.b * 255)}, ${bg.a ?? 1})`;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const alpha = bg.a !== undefined ? bg.a : 1;
+        if (alpha > 0) {
+          ctx.fillStyle = `rgba(${Math.round(bg.r * 255)}, ${Math.round(bg.g * 255)}, ${Math.round(bg.b * 255)}, ${alpha})`;
+          ctx.fillRect(0, 0, cw, ch);
+        }
 
         if (obj.frameVisible !== false) {
           ctx.strokeStyle = '#666666';
-          ctx.lineWidth = 4;
-          ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
+          ctx.lineWidth = Math.max(2, Math.round(Math.min(cw, ch) * 0.03));
+          const halfLine = ctx.lineWidth / 2;
+          ctx.strokeRect(halfLine, halfLine, cw - ctx.lineWidth, ch - ctx.lineWidth);
         }
+
+        // テキスト描画: contentRotation の適用 (caDIY3D の右手系・反時計回り角度指定に対応)
+        const rotDeg = obj.contentRotation || 0;
+        const rad = -THREE.MathUtils.degToRad(rotDeg);
+
+        ctx.save();
+        ctx.translate(cw / 2, ch / 2);
+        if (rad !== 0) {
+          ctx.rotate(rad);
+        }
+
+        // テキスト描画時の有効幅・高さ (回転に応じて入れ替わる)
+        const isRotated90or270 = Math.abs(rotDeg % 180) === 90;
+        const textAvailableWidth = isRotated90or270 ? ch : cw;
+        const textAvailableHeight = isRotated90or270 ? cw : ch;
 
         const textColor = obj.color || { r: 0.1, g: 0.1, b: 0.1 };
         ctx.fillStyle = `rgb(${Math.round(textColor.r * 255)}, ${Math.round(textColor.g * 255)}, ${Math.round(textColor.b * 255)})`;
-        const fontStyle = `${obj.bold ? 'bold ' : ''}${obj.italic ? 'italic ' : ''}48px sans-serif`;
+
+        // フォントサイズの決定
+        let fontSize = obj.fontSize ? obj.fontSize * (baseRes / 256) : Math.round(textAvailableHeight * 0.45);
+        fontSize = Math.min(fontSize, textAvailableHeight * 0.7);
+
+        const fontFamily = obj.fontFamily || 'sans-serif';
+        const fontStyle = `${obj.bold ? 'bold ' : ''}${obj.italic ? 'italic ' : ''}${Math.round(fontSize)}px ${fontFamily}`;
         ctx.font = fontStyle;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(obj.text || obj.name, canvas.width / 2, canvas.height / 2);
+
+        // 文字列がはみ出す場合は縮小
+        const text = obj.text || obj.name || '';
+        const textWidth = ctx.measureText(text).width;
+        if (textWidth > textAvailableWidth * 0.9 && textWidth > 0) {
+          const scale = (textAvailableWidth * 0.9) / textWidth;
+          fontSize = Math.max(Math.round(fontSize * scale), 10);
+          ctx.font = `${obj.bold ? 'bold ' : ''}${obj.italic ? 'italic ' : ''}${fontSize}px ${fontFamily}`;
+        }
+
+        ctx.fillText(text, 0, 0);
+        ctx.restore();
       }
 
       const texture = new THREE.CanvasTexture(canvas);
@@ -47,6 +98,7 @@ export class TextBoardBuilder {
       material = new THREE.MeshBasicMaterial({
         color: 0xeeeeee,
         side: THREE.DoubleSide,
+        transparent: true,
       });
     }
 
