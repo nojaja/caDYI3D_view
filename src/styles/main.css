@@ -595,6 +595,15 @@ html, body {
   display: block;
 }
 
+.cutplan-svg-part {
+  transition: opacity 0.15s ease;
+}
+
+.cutplan-svg-part:hover {
+  opacity: 0.92;
+  cursor: pointer;
+}
+
 .cutplan-part-block {
   position: relative;
   height: 100%;

@@ -442,6 +442,10 @@
           "type": "boolean",
           "description": "Whether this part is excluded from cut plan and BOM parts list aggregation."
         },
+        "dummy": {
+          "type": "boolean",
+          "description": "Whether this part is a reference/dummy object drawn in wireframe."
+        },
         "cutAngles": {
           "type": "array",
           "description": "8 cut angle values in degrees [0..7] for miters/bevels on ends.",

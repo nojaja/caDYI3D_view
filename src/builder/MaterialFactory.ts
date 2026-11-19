@@ -36,6 +36,23 @@ export class MaterialFactory {
   }
 
   /**
+   * dummy部材用のワイヤフレームマテリアル
+   */
+  public getWireframeMaterial(color: ColorRGB): THREE.MeshBasicMaterial {
+    const key = `wire_${color.r.toFixed(3)}_${color.g.toFixed(3)}_${color.b.toFixed(3)}`;
+    const cached = this.materialCache.get(key);
+    if (cached) return cached as any;
+
+    const material = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(color.r, color.g, color.b),
+      wireframe: true,
+    });
+
+    this.materialCache.set(key, material as any);
+    return material;
+  }
+
+  /**
    * キャッシュされたマテリアルの解放
    */
   public dispose(): void {

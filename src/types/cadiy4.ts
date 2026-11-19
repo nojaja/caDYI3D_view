@@ -101,6 +101,7 @@ export interface CadiyObjectBase {
   textureId?: number;
   displayId?: number;
   type: ObjectType;
+  dummy?: boolean;
   remarks?: string;
   rotationDeg?: Vector3;
   worldBounds?: BoundingBox3D;

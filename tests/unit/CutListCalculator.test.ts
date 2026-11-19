@@ -209,7 +209,60 @@ describe('CutListCalculator - 材料取り図(木取り図)の計算ロジック
     expect(boardSheet!.sheetWidthMm).toBe(400);
   });
 
-  it('testdata/003.cadiy4 の材料取り図で全部で20個の素材シートが生成され、各原木・原板のサイズが合っていること', () => {
+  it('dummy: true のオブジェクトは材料取り図(木取り図)から完全に除外されること', () => {
+    const calculator = new CutListCalculator();
+    const cutListWithDummy: CutListData = {
+      cutWidthMm: 3,
+      packingMode: 'adjacent',
+      layouts: [
+        { baseId: 0, partsId: 'normal-1', x: 0, z: 0 },
+        { baseId: 0, partsId: 'dummy-1', x: 0, z: 0.5 },
+      ],
+    };
+    const objectsWithDummy: CadiyObject[] = [
+      {
+        id: 'normal-1',
+        name: 'SPF 1x4材',
+        type: 'lumber',
+        position: { x: 0, y: 0, z: 0 },
+        size: { x: 0.089, y: 0.019, z: 0.5 },
+        quaternion: { x: 0, y: 0, z: 0, w: 1 },
+        color: { r: 1, g: 1, b: 1 },
+        visible: true,
+        dummy: false,
+      },
+      {
+        id: 'dummy-1',
+        name: '参考ダミー部材',
+        type: 'lumber',
+        position: { x: 0, y: 0, z: 0 },
+        size: { x: 0.089, y: 0.019, z: 0.5 },
+        quaternion: { x: 0, y: 0, z: 0, w: 1 },
+        color: { r: 1, g: 1, b: 1 },
+        visible: true,
+        dummy: true,
+      },
+      {
+        id: 'dummy-unplaced',
+        name: '未配置ダミー円柱',
+        type: 'cylinder',
+        position: { x: 0, y: 0, z: 0 },
+        size: { x: 0.05, y: 0.05, z: 0.05 },
+        quaternion: { x: 0, y: 0, z: 0, w: 1 },
+        color: { r: 1, g: 1, b: 1 },
+        visible: true,
+        dummy: true,
+      },
+    ];
+
+    const sheets = calculator.calculate(cutListWithDummy, objectsWithDummy);
+    // dummy-1 および dummy-unplaced は除外され、normal-1 のみ含まれること
+    expect(sheets).toHaveLength(1);
+    expect(sheets[0].items).toHaveLength(1);
+    expect(sheets[0].items[0].object.id).toBe('normal-1');
+  });
+
+  it('testdata/003.cadiy4 の材料取り図でdummyオブジェクト(アジャスター等)が除外されて実部材14個の素材シートが生成されること', () => {
     const filePath = path.resolve(__dirname, '../../testdata/003.cadiy4');
     const content = fs.readFileSync(filePath, 'utf-8');
     const parser = new Cadiy4Parser();
@@ -218,8 +271,8 @@ describe('CutListCalculator - 材料取り図(木取り図)の計算ロジック
     const calculator = new CutListCalculator();
     const sheets = calculator.calculate(data.cutList, data.objects);
 
-    // 全部で20個の素材が表示されること
-    expect(sheets).toHaveLength(20);
+    // dummy: true のオブジェクト(アジャスター円柱6個など)が除外され、全部で14個の実素材シートが表示されること
+    expect(sheets).toHaveLength(14);
 
     // 内訳検証:
     // SPF 2x2材: 5本 (1820mm, 38mm)
@@ -256,8 +309,54 @@ describe('CutListCalculator - 材料取り図(木取り図)の計算ロジック
       expect(s.sheetLengthMm).toBe(1820);
     }
 
-    // アジャスター (円柱): 6個
+    // アジャスター (dummy: true の円柱): 木取り図には含まれないこと (0個)
     const adjusterSheets = sheets.filter(s => (s.lumberName || '').includes('円柱') || s.items.some(i => (i.object.partName || '').includes('アジャスター')));
-    expect(adjusterSheets).toHaveLength(6);
+    expect(adjusterSheets).toHaveLength(0);
+
+    // 元オブジェクトデータでアジャスターが dummy: true であることの検証
+    const adjustersInObjects = data.objects.filter(o => (o.partName || '').includes('アジャスター'));
+    expect(adjustersInObjects).toHaveLength(6);
+    for (const adj of adjustersInObjects) {
+      expect(adj.dummy).toBe(true);
+    }
+  });
+
+  it('testdata/007.cadiy4 の材料 #1（針葉樹合板）でサイズが異なる2つのパーツ(1820mm, 1721mm)が正しく計算され、usedLengthMmが最大長を反映すること', () => {
+    const filePath = path.resolve(__dirname, '../../testdata/007.cadiy4');
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const parser = new Cadiy4Parser();
+    const data = parser.parse(content);
+
+    const calculator = new CutListCalculator();
+    const sheets = calculator.calculate(data.cutList, data.objects);
+
+    // 材料 #1 (baseId: 0, 針葉樹合板)
+    const sheet1 = sheets.find(s => s.baseId === 0 && (s.lumberName || '').includes('針葉樹'));
+    expect(sheet1).toBeDefined();
+    expect(sheet1!.layout).toBe('2d');
+    expect(sheet1!.sheetLengthMm).toBe(1820);
+    expect(sheet1!.sheetWidthMm).toBe(910);
+    expect(sheet1!.items).toHaveLength(2);
+
+    const item0 = sheet1!.items.find(it => Math.round(it.lengthMm) === 1820);
+    const item1 = sheet1!.items.find(it => Math.round(it.lengthMm) === 1721);
+    expect(item0).toBeDefined();
+    expect(item1).toBeDefined();
+
+    // パーツ0 (長さ 1820mm, 幅 約556mm)
+    expect(item0!.lengthMm).toBeCloseTo(1820, 1);
+    expect(item0!.widthMm).toBeCloseTo(556.3, 1);
+    expect(item0!.positionMm.z).toBeCloseTo(0, 1);
+    expect(item0!.positionMm.x).toBeCloseTo(0, 1);
+
+    // パーツ1 (長さ 1720.9mm, 幅 約289mm)
+    expect(item1!.lengthMm).toBeCloseTo(1720.9, 1);
+    expect(item1!.widthMm).toBeCloseTo(289, 1);
+    expect(item1!.positionMm.z).toBeCloseTo(0, 1);
+    expect(item1!.positionMm.x).toBeCloseTo(559.3, 1);
+
+    // 最大使用長は1820mm (原板長1820mmいっぱい) であり、端材長は0mm (1721mmに引きずられない)
+    expect(sheet1!.usedLengthMm).toBeCloseTo(1820, 1);
+    expect(sheet1!.remainingLengthMm).toBeCloseTo(0, 1);
   });
 });

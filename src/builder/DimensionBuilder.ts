@@ -37,9 +37,10 @@ export class DimensionBuilder {
 
     // 寸法値ラベル (mm表示: 0.35m -> 350)
     const mmValue = Math.round(length * 1000);
-    const labelMesh = this.createLabelMesh(`${mmValue}`, color);
+    const labelMesh = this.createLabelMesh(`${mmValue}`, color, obj.fontSize);
     if (labelMesh) {
-      labelMesh.position.set(0, 0.015, 0); // 寸法線の少し上
+      const scale = obj.fontSize ? Math.max(obj.fontSize / 24, 0.6) : 1.0;
+      labelMesh.position.set(0, 0.04 * scale, 0); // 寸法線の上部に配置
       group.add(labelMesh);
     }
 
@@ -51,30 +52,41 @@ export class DimensionBuilder {
     return group;
   }
 
-  private createLabelMesh(text: string, color: THREE.Color): THREE.Mesh | null {
-    if (typeof document === 'undefined' || typeof document.createElement !== 'function') {
-      return null;
+  private createLabelMesh(text: string, color: THREE.Color, fontSize?: number): THREE.Mesh {
+    const scale = fontSize ? Math.max(fontSize / 24, 0.6) : 1.0;
+    const width = 0.20 * scale;
+    const height = 0.08 * scale;
+
+    let material: THREE.Material;
+
+    if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 128;
+      const ctx = canvas.getContext('2d');
+
+      if (ctx) {
+        ctx.fillStyle = `rgb(${Math.round(color.r * 255)}, ${Math.round(color.g * 255)}, ${Math.round(color.b * 255)})`;
+        ctx.font = 'bold 56px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+      }
+
+      const texture = new THREE.CanvasTexture(canvas);
+      material = new THREE.MeshBasicMaterial({
+        map: texture,
+        side: THREE.DoubleSide,
+        transparent: true,
+      });
+    } else {
+      material = new THREE.MeshBasicMaterial({
+        color: 0x333333,
+        side: THREE.DoubleSide,
+      });
     }
 
-    const canvas = document.createElement('canvas');
-    canvas.width = 128;
-    canvas.height = 64;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-
-    ctx.fillStyle = `rgb(${Math.round(color.r * 255)}, ${Math.round(color.g * 255)}, ${Math.round(color.b * 255)})`;
-    ctx.font = 'bold 36px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(text, canvas.width / 2, canvas.height / 2);
-
-    const texture = new THREE.CanvasTexture(canvas);
-    const material = new THREE.MeshBasicMaterial({
-      map: texture,
-      side: THREE.DoubleSide,
-      transparent: true,
-    });
-    const geometry = new THREE.PlaneGeometry(0.06, 0.03);
+    const geometry = new THREE.PlaneGeometry(width, height);
     const mesh = new THREE.Mesh(geometry, material);
     mesh.rotateX(-Math.PI / 2); // 水平に見やすくする
     return mesh;

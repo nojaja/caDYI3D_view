@@ -1,21 +1,24 @@
 import * as THREE from 'three';
-import { CadiyObject, LumberObject, BoardObject, CylinderObject, DimensionObject, TextBoardObject, PictureObject, PictureImageItem } from '../types/cadiy4';
+import { CadiyObject, LumberObject, BoardObject, CylinderObject, DimensionObject, TextBoardObject, PictureObject, PictureImageItem, TubeObject, CommentObject } from '../types/cadiy4';
 import { MaterialFactory } from './MaterialFactory';
 import { TextBoardBuilder } from './TextBoardBuilder';
 import { DimensionBuilder } from './DimensionBuilder';
 import { PictureBuilder } from './PictureBuilder';
+import { CommentBuilder } from './CommentBuilder';
 
 export class ModelBuilder {
   private materialFactory: MaterialFactory;
   private textBoardBuilder: TextBoardBuilder;
   private dimensionBuilder: DimensionBuilder;
   private pictureBuilder: PictureBuilder;
+  private commentBuilder: CommentBuilder;
 
   constructor(materialFactory?: MaterialFactory) {
     this.materialFactory = materialFactory || new MaterialFactory();
     this.textBoardBuilder = new TextBoardBuilder();
     this.dimensionBuilder = new DimensionBuilder();
     this.pictureBuilder = new PictureBuilder();
+    this.commentBuilder = new CommentBuilder();
   }
 
   /**
@@ -81,6 +84,14 @@ export class ModelBuilder {
       return picMesh;
     }
 
+    if (obj.type === 'comment') {
+      const commentMesh = this.commentBuilder.build(obj as CommentObject);
+      if (commentMesh) {
+        commentMesh.visible = finalVisible;
+      }
+      return commentMesh;
+    }
+
     let geometry: THREE.BufferGeometry | null = null;
 
     switch (obj.type) {
@@ -92,6 +103,9 @@ export class ModelBuilder {
       case 'roundBoard':
         geometry = this.createCylinderGeometry(obj as CylinderObject);
         break;
+      case 'tube':
+        geometry = this.createTubeGeometry(obj as TubeObject);
+        break;
       default:
         geometry = new THREE.BoxGeometry(obj.size.x, obj.size.y, obj.size.z);
         break;
@@ -99,7 +113,9 @@ export class ModelBuilder {
 
     if (!geometry) return null;
 
-    const material = this.materialFactory.getWoodMaterial(obj.color);
+    const material = obj.dummy
+      ? this.materialFactory.getWireframeMaterial(obj.color)
+      : this.materialFactory.getWoodMaterial(obj.color);
     const mesh = new THREE.Mesh(geometry, material);
 
     mesh.name = obj.partName || obj.name;
@@ -118,10 +134,12 @@ export class ModelBuilder {
       remarks: obj.remarks,
     };
 
-    // 木材のエッジ線
-    const edges = new THREE.EdgesGeometry(geometry, 25);
-    const line = new THREE.LineSegments(edges, this.materialFactory.getEdgeMaterial());
-    mesh.add(line);
+    // 通常部材のエッジ線（dummyのワイヤフレーム部材には追加しない）
+    if (!obj.dummy) {
+      const edges = new THREE.EdgesGeometry(geometry, 25);
+      const line = new THREE.LineSegments(edges, this.materialFactory.getEdgeMaterial());
+      mesh.add(line);
+    }
 
     return mesh;
   }
@@ -156,18 +174,18 @@ export class ModelBuilder {
     // 注意: caDIY3Dの立ち姿勢ではローカル -Z が上部(天面)、+Z が下部(床面)に対応する
     const polygon2D: { x: number; z: number }[] = [];
 
-    // 1. 左下 (X-, Z+): Edge 4
-    if (cutMap.has(4)) {
-      const c = cutMap.get(4)!;
+    // 1. 左下 (X-, Z+): Edge 5
+    if (cutMap.has(5)) {
+      const c = cutMap.get(5)!;
       polygon2D.push({ x: -hx, z: hz - c.faceBDist });
       polygon2D.push({ x: -hx + c.faceADist, z: hz });
     } else {
       polygon2D.push({ x: -hx, z: hz });
     }
 
-    // 2. 右下 (X+, Z+): Edge 5
-    if (cutMap.has(5)) {
-      const c = cutMap.get(5)!;
+    // 2. 右下 (X+, Z+): Edge 4
+    if (cutMap.has(4)) {
+      const c = cutMap.get(4)!;
       polygon2D.push({ x: hx - c.faceADist, z: hz });
       polygon2D.push({ x: hx, z: hz - c.faceBDist });
     } else {
@@ -248,6 +266,42 @@ export class ModelBuilder {
 
     const geometry = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, radialSegments);
     geometry.rotateX(Math.PI / 2);
+    return geometry;
+  }
+
+  /**
+   * パイプ (tube) の中空円筒ジオメトリを生成
+   */
+  private createTubeGeometry(obj: TubeObject): THREE.BufferGeometry {
+    const outerRadius = (obj.size.x || obj.size.y) / 2;
+    const height = obj.size.z;
+    const thickness = obj.thickness || 0;
+    const innerRadius = outerRadius - thickness;
+
+    // 肉厚が未指定または外径以上の場合は通常の円柱を生成
+    if (thickness <= 0 || innerRadius <= 0) {
+      const geometry = new THREE.CylinderGeometry(outerRadius, outerRadius, height, 32);
+      geometry.rotateX(Math.PI / 2);
+      return geometry;
+    }
+
+    const shape = new THREE.Shape();
+    shape.absarc(0, 0, outerRadius, 0, Math.PI * 2, false);
+
+    const holePath = new THREE.Path();
+    holePath.absarc(0, 0, innerRadius, 0, Math.PI * 2, true);
+    shape.holes.push(holePath);
+
+    const extrudeSettings: THREE.ExtrudeGeometryOptions = {
+      depth: height,
+      bevelEnabled: false,
+      curveSegments: 32,
+    };
+
+    const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    geometry.translate(0, 0, -height / 2);
+    geometry.computeVertexNormals();
+
     return geometry;
   }
 

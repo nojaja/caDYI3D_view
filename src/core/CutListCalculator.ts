@@ -59,6 +59,7 @@ export class CutListCalculator {
     for (const layout of cutList.layouts) {
       const obj = objectMap.get(layout.partsId);
       if (!obj) continue;
+      if (obj.dummy === true || obj.noAggregated === true) continue;
 
       const matKey = this.getMaterialKey(obj);
       const groupKey = `${matKey}___base_${layout.baseId}`;
@@ -135,8 +136,7 @@ export class CutListCalculator {
       let lumberName = refObj.standardRef?.name || refObj.name || (isBoardSheet ? '板材' : '角材');
 
       if (items.length > 0) {
-        const lastItem = items[items.length - 1];
-        usedLengthMm = lastItem.positionMm.z + lastItem.lengthMm;
+        usedLengthMm = Math.max(...items.map((it) => it.positionMm.z + it.lengthMm));
         netPartsLengthMm = items.reduce((acc, it) => acc + it.lengthMm, 0);
       }
 
@@ -178,7 +178,7 @@ export class CutListCalculator {
     const placedPartsIds = new Set(cutList.layouts.map((l) => l.partsId));
     const unplacedObjects = objects.filter((obj) => {
       if (placedPartsIds.has(obj.id)) return false;
-      if (obj.noAggregated === true) return false;
+      if (obj.noAggregated === true || obj.dummy === true) return false;
       const type = obj.type;
       if (type !== 'lumber' && type !== 'board' && type !== 'cylinder' && type !== 'roundBoard') {
         return false;

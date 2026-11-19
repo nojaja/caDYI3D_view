@@ -225,7 +225,17 @@ export class ViewerUI {
 
     const canvas = document.createElement('div');
     canvas.className = 'cutplan-board-canvas-2d';
+    canvas.innerHTML = ViewerUI.render2DSheetSvg(sheet);
 
+    sheetEl.appendChild(header);
+    sheetEl.appendChild(canvas);
+    return sheetEl;
+  }
+
+  /**
+   * 2D 板材・合板シートの材料取り図 SVG 文字列を生成
+   */
+  public static render2DSheetSvg(sheet: CutPlanSheet): string {
     const svgWidth = sheet.sheetLengthMm;
     const svgHeight = sheet.sheetWidthMm;
 
@@ -243,7 +253,7 @@ export class ViewerUI {
     // 原板枠（背景・端材下地）
     svgInner += `<rect x="0" y="0" width="${svgWidth}" height="${svgHeight}" fill="url(#scrap-hatch-${sheet.baseId})" stroke="#94a3b8" stroke-width="2" rx="4" />`;
 
-    // 端材ラベル（右側または余白）
+    // 全体端材ラベル（右側または余白）
     if (sheet.remainingLengthMm > 50) {
       svgInner += `
         <text x="${svgWidth - 20}" y="${svgHeight / 2}" font-size="28" font-weight="600" fill="#94a3b8" text-anchor="end" dominant-baseline="middle">
@@ -252,6 +262,7 @@ export class ViewerUI {
       `;
     }
 
+    // 1. 各パーツ本体を描画
     for (const item of sheet.items) {
       const px = item.positionMm.z;
       const py = item.positionMm.x;
@@ -260,16 +271,12 @@ export class ViewerUI {
 
       const edgeCuts = item.edgeCuts || [];
       const cut7 = edgeCuts.find((c: any) => c.edgeIndex === 7);
-
-      // パーツ切り出し用の木取り線（切断線: のこ刃切り代付き）
-      // 縦の切断線 (パーツ右端)
-      svgInner += `
-        <line x1="${px + pw}" y1="0" x2="${px + pw}" y2="${svgHeight}" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2" stroke-dasharray="6,4" />
-        <text x="${px + pw + 6}" y="24" font-size="18" font-weight="bold" fill="#dc2626">✂ 木取り線 (${sheet.cutWidthMm}mm)</text>
-      `;
+      const cut4 = edgeCuts.find((c: any) => c.edgeIndex === 4);
+      const cut5 = edgeCuts.find((c: any) => c.edgeIndex === 5);
+      const cut6 = edgeCuts.find((c: any) => c.edgeIndex === 6);
 
       if (cut7) {
-        // 斜めカットあり (Corner 7)
+        // 斜めカット (右上角: Corner 7)
         const cutA = cut7.faceADist * 1000;
         const cutB = cut7.faceBDist * 1000;
 
@@ -287,19 +294,94 @@ export class ViewerUI {
           `${px + pw},${py + cutA}`,
         ].join(' ');
 
-        // 切り落とし端材部分
         svgInner += `<polygon points="${scrapPoints}" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,4" />`;
-        // 残存パーツ本体
-        svgInner += `<polygon points="${polyPoints}" class="cutplan-part-block" fill="#fde68a" stroke="#d97706" stroke-width="2" />`;
-        // 切断指示線 (斜め木取り線)
+        svgInner += `<polygon points="${polyPoints}" class="cutplan-svg-part" fill="#fde68a" stroke="#d97706" stroke-width="2" />`;
         svgInner += `<line x1="${px + pw - cutB}" y1="${py}" x2="${px + pw}" y2="${py + cutA}" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2.5" />`;
-        // 切断寸法テキスト
+
         const midX = px + pw - cutB / 2;
+        const midY = py + cutA / 2;
+        svgInner += `<text x="${midX}" y="${Math.max(py + 32, midY - 12)}" font-size="28" font-weight="bold" fill="#b91c1c" text-anchor="middle">✂ 斜めカット: ${cutA.toFixed(1)} × ${cutB.toFixed(1)}mm</text>`;
+      } else if (cut4) {
+        // 斜めカット (Corner 4: 木取り図上はパーツ左端のカット)
+        const cutA = cut4.faceADist * 1000;
+        const cutB = cut4.faceBDist * 1000;
+
+        const polyPoints = [
+          `${px},${py}`,
+          `${px + pw},${py}`,
+          `${px + pw},${py + ph}`,
+          `${px + cutB},${py + ph}`,
+          `${px},${py + ph - cutA}`,
+        ].join(' ');
+
+        const scrapPoints = [
+          `${px},${py + ph - cutA}`,
+          `${px},${py + ph}`,
+          `${px + cutB},${py + ph}`,
+        ].join(' ');
+
+        svgInner += `<polygon points="${scrapPoints}" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,4" />`;
+        svgInner += `<polygon points="${polyPoints}" class="cutplan-svg-part" fill="#fde68a" stroke="#d97706" stroke-width="2" />`;
+        svgInner += `<line x1="${px + cutB}" y1="${py + ph}" x2="${px}" y2="${py + ph - cutA}" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2.5" />`;
+
+        const midX = px + cutB / 2;
+        const midY = py + ph - cutA / 2;
+        svgInner += `<text x="${midX}" y="${Math.min(py + ph - 12, midY + 14)}" font-size="28" font-weight="bold" fill="#b91c1c" text-anchor="middle">✂ 斜めカット: ${cutA.toFixed(1)} × ${cutB.toFixed(1)}mm</text>`;
+      } else if (cut5) {
+        // 斜めカット (Corner 5: 木取り図上はパーツ右端のカット)
+        const cutA = cut5.faceADist * 1000;
+        const cutB = cut5.faceBDist * 1000;
+
+        const polyPoints = [
+          `${px},${py}`,
+          `${px + pw},${py}`,
+          `${px + pw},${py + ph - cutA}`,
+          `${px + pw - cutB},${py + ph}`,
+          `${px},${py + ph}`,
+        ].join(' ');
+
+        const scrapPoints = [
+          `${px + pw},${py + ph - cutA}`,
+          `${px + pw},${py + ph}`,
+          `${px + pw - cutB},${py + ph}`,
+        ].join(' ');
+
+        svgInner += `<polygon points="${scrapPoints}" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,4" />`;
+        svgInner += `<polygon points="${polyPoints}" class="cutplan-svg-part" fill="#fde68a" stroke="#d97706" stroke-width="2" />`;
+        svgInner += `<line x1="${px + pw - cutB}" y1="${py + ph}" x2="${px + pw}" y2="${py + ph - cutA}" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2.5" />`;
+
+        const midX = px + pw - cutB / 2;
+        const midY = py + ph - cutA / 2;
+        svgInner += `<text x="${midX}" y="${Math.min(py + ph - 12, midY + 14)}" font-size="28" font-weight="bold" fill="#b91c1c" text-anchor="middle">✂ 斜めカット: ${cutA.toFixed(1)} × ${cutB.toFixed(1)}mm</text>`;
+      } else if (cut6) {
+        // 斜めカット (左上角: Corner 6)
+        const cutA = cut6.faceADist * 1000;
+        const cutB = cut6.faceBDist * 1000;
+
+        const polyPoints = [
+          `${px + cutB},${py}`,
+          `${px + pw},${py}`,
+          `${px + pw},${py + ph}`,
+          `${px},${py + ph}`,
+          `${px},${py + cutA}`,
+        ].join(' ');
+
+        const scrapPoints = [
+          `${px},${py}`,
+          `${px + cutB},${py}`,
+          `${px},${py + cutA}`,
+        ].join(' ');
+
+        svgInner += `<polygon points="${scrapPoints}" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,4" />`;
+        svgInner += `<polygon points="${polyPoints}" class="cutplan-svg-part" fill="#fde68a" stroke="#d97706" stroke-width="2" />`;
+        svgInner += `<line x1="${px + cutB}" y1="${py}" x2="${px}" y2="${py + cutA}" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2.5" />`;
+
+        const midX = px + cutB / 2;
         const midY = py + cutA / 2;
         svgInner += `<text x="${midX}" y="${Math.max(py + 32, midY - 12)}" font-size="28" font-weight="bold" fill="#b91c1c" text-anchor="middle">✂ 斜めカット: ${cutA.toFixed(1)} × ${cutB.toFixed(1)}mm</text>`;
       } else {
         // 通常の長方形パーツ
-        svgInner += `<rect x="${px}" y="${py}" width="${pw}" height="${ph}" class="cutplan-part-block" fill="#fde68a" stroke="#d97706" stroke-width="2" rx="2" />`;
+        svgInner += `<rect x="${px}" y="${py}" width="${pw}" height="${ph}" class="cutplan-svg-part" fill="#fde68a" stroke="#d97706" stroke-width="2" rx="2" />`;
       }
 
       // パーツ名・寸法ラベル (幅 × 長さを明記)
@@ -312,16 +394,48 @@ export class ViewerUI {
       `;
     }
 
-    const svgHtml = `
+    // 2. 各パーツの木取り線（切断線）を描画
+    for (const item of sheet.items) {
+      const px = item.positionMm.z;
+      const py = item.positionMm.x;
+      const pw = item.lengthMm;
+      const ph = item.widthMm;
+
+      // 縦の切断線 (パーツ右端):
+      // 原板端(切り代不要)の場合は切断線を引かない。
+      // 切断線はそのパーツの高さ範囲 [py, py + ph] にのみ引き、他パーツの領域を貫通させない。
+      if (px + pw < svgWidth - 1) {
+        const cutX = px + pw;
+        svgInner += `
+          <line x1="${cutX}" y1="${py}" x2="${cutX}" y2="${py + ph}" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2.5" stroke-dasharray="6,4" />
+          <text x="${cutX + 6}" y="${py + 26}" font-size="20" font-weight="bold" fill="#dc2626">✂ 木取り線 (${sheet.cutWidthMm}mm)</text>
+        `;
+        // パーツ右側の端材ラベル
+        const scrapWidth = svgWidth - cutX;
+        if (scrapWidth >= 50) {
+          svgInner += `
+            <text x="${cutX + scrapWidth / 2}" y="${py + ph / 2}" font-size="24" font-weight="600" fill="#94a3b8" text-anchor="middle" dominant-baseline="middle">
+              端材 (${scrapWidth.toFixed(0)}mm)
+            </text>
+          `;
+        }
+      }
+
+      // 横の切断線 (パーツ下端):
+      // 原板下端ではない場合、パーツ下端に水平の木取り線を引く
+      if (py + ph < svgHeight - 1) {
+        const cutY = py + ph;
+        svgInner += `
+          <line x1="${px}" y1="${cutY}" x2="${px + pw}" y2="${cutY}" class="cutplan-kerf-line-h" stroke="#dc2626" stroke-width="2.5" stroke-dasharray="6,4" />
+        `;
+      }
+    }
+
+    return `
       <svg viewBox="0 0 ${svgWidth} ${svgHeight}" class="cutplan-svg-canvas" preserveAspectRatio="xMidYMid meet">
         ${svgInner}
       </svg>
     `;
-
-    canvas.innerHTML = svgHtml;
-    sheetEl.appendChild(header);
-    sheetEl.appendChild(canvas);
-    return sheetEl;
   }
 
   /**

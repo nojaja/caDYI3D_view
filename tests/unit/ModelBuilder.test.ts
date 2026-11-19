@@ -138,4 +138,268 @@ describe('ModelBuilder', () => {
     expect(rightTopY).toBeCloseTo(1.42, 2);
     expect(leftTopY).toBeCloseTo(1.22, 2);
   });
+
+  it('testdata/007.cadiy4 の斜めカット01・斜めカット02(edgeIndex: 4)のカット方向が正しく天板01の傾斜と整合すること', () => {
+    const filePath = path.resolve(__dirname, '../../testdata/007.cadiy4');
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const parser = new Cadiy4Parser();
+    const data = parser.parse(content);
+
+    const cut01Obj = data.objects.find(o => o.partName === '斜めカット01')!;
+    const cut02Obj = data.objects.find(o => o.partName === '斜めカット02')!;
+    const top01Obj = data.objects.find(o => o.partName === '天板01')!;
+
+    expect(cut01Obj).toBeDefined();
+    expect(cut02Obj).toBeDefined();
+    expect(top01Obj).toBeDefined();
+
+    const builder = new ModelBuilder();
+    const group = builder.build([cut01Obj, cut02Obj, top01Obj]);
+
+    const cut01Mesh = group.children[0] as THREE.Mesh;
+    cut01Mesh.updateMatrixWorld();
+
+    const posAttr = cut01Mesh.geometry.attributes.position;
+    const worldVertices: THREE.Vector3[] = [];
+    for (let i = 0; i < posAttr.count; i++) {
+      const v = new THREE.Vector3().fromBufferAttribute(posAttr, i);
+      v.applyMatrix4(cut01Mesh.matrixWorld);
+      worldVertices.push(v);
+    }
+
+    // 斜めカット01 (X: 約0.928m 〜 1.737m):
+    // 本来は左(X小)が高く(Y約3.146m)、右(X大)が低くカット(Y約2.974m)され、天板01(左高3.15m〜右低2.98m)の下に乗る
+    const leftVertices = worldVertices.filter(v => v.x < 1.0);
+    const rightVertices = worldVertices.filter(v => v.x > 1.7);
+
+    const leftMaxY = Math.max(...leftVertices.map(v => v.y));
+    const rightMaxY = Math.max(...rightVertices.map(v => v.y));
+
+    // 左側は高い(約 3.146m)
+    expect(leftMaxY).toBeCloseTo(3.146, 2);
+    // 右側は斜めカットにより低くなっていること(約 2.974m)。以前の左右逆バグでは右側が3.146mだった
+    expect(rightMaxY).toBeCloseTo(2.974, 2);
+
+    // 斜めカット02 (X: 約1.737m 〜 2.350m):
+    // 斜めカット01の右隣。同様に左(X小)が高く、右(X大)が低くカットされて天板01の下に乗ること
+    const cut02Mesh = group.children[1] as THREE.Mesh;
+    cut02Mesh.updateMatrixWorld();
+    const posAttr02 = cut02Mesh.geometry.attributes.position;
+    const worldVertices02: THREE.Vector3[] = [];
+    for (let i = 0; i < posAttr02.count; i++) {
+      const v = new THREE.Vector3().fromBufferAttribute(posAttr02, i);
+      v.applyMatrix4(cut02Mesh.matrixWorld);
+      worldVertices02.push(v);
+    }
+    const left02 = worldVertices02.filter(v => v.x < 1.8);
+    const right02 = worldVertices02.filter(v => v.x > 2.3);
+    const left02MaxY = Math.max(...left02.map(v => v.y));
+    const right02MaxY = Math.max(...right02.map(v => v.y));
+    expect(left02MaxY).toBeCloseTo(2.974, 2);
+    expect(right02MaxY).toBeCloseTo(2.844, 2);
+  });
+
+  it('塩ビパイプなどの tube オブジェクトから中空パイプジオメトリを生成すること', () => {
+    const builder = new ModelBuilder();
+    const tubeObj = {
+      id: 'tube-1',
+      name: '塩ビパイプ Φ97mm 9mm厚',
+      partName: 'パイプ1',
+      type: 'tube' as const,
+      size: { x: 0.097, y: 0.097, z: 0.177 },
+      thickness: 0.009,
+      position: { x: 0, y: 0, z: 0 },
+      quaternion: { x: 0, y: 0, z: 0, w: 1 },
+      color: { r: 0.4, g: 0.4, b: 0.5 },
+      visible: true
+    };
+
+    const group = builder.build([tubeObj]);
+    expect(group.children).toHaveLength(1);
+
+    const mesh = group.children[0] as THREE.Mesh;
+    expect(mesh).toBeInstanceOf(THREE.Mesh);
+
+    const geometry = mesh.geometry;
+    geometry.computeBoundingBox();
+    const bb = geometry.boundingBox!;
+
+    // 外形寸法の検証
+    expect(bb.max.x - bb.min.x).toBeCloseTo(0.097, 3);
+    expect(bb.max.y - bb.min.y).toBeCloseTo(0.097, 3);
+    expect(bb.max.z - bb.min.z).toBeCloseTo(0.177, 3);
+
+    // BoxGeometry の単純な 8 頂点/36 インデックスではなく、円筒管ジオメトリであること
+    expect(geometry.attributes.position.count).toBeGreaterThan(100);
+
+    // 中空断面の検証: 中心(0, 0, z)近傍には頂点が存在せず、内径(半径約 0.0395m)以上の距離にあること
+    const posAttr = geometry.attributes.position;
+    for (let i = 0; i < posAttr.count; i++) {
+      const vx = posAttr.getX(i);
+      const vy = posAttr.getY(i);
+      const radialDist = Math.sqrt(vx * vx + vy * vy);
+      // 内径内側 (0.03m 以下) に頂点が存在しないこと (中空であること)
+      expect(radialDist).toBeGreaterThanOrEqual(0.038);
+    }
+  });
+
+  it('testdata/007.cadiy4 の全オブジェクトを構築し、塩ビパイプがすべてtubeとして生成されること', () => {
+    const filePath = path.resolve(__dirname, '../../testdata/007.cadiy4');
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const parser = new Cadiy4Parser();
+    const data = parser.parse(content);
+
+    const builder = new ModelBuilder();
+    const group = builder.build(data.objects);
+    expect(group.children.length).toBe(data.objects.length);
+
+    // 007.cadiy4 内の全 tube オブジェクトのメッシュ検証
+    const tubeObjects = data.objects.filter(o => o.type === 'tube');
+    expect(tubeObjects.length).toBe(21);
+
+    for (const tubeObj of tubeObjects) {
+      const mesh = group.children.find(c => c.name === (tubeObj.partName || tubeObj.name)) as THREE.Mesh;
+      expect(mesh).toBeDefined();
+      // 直方体(24頂点)ではなく、中空円筒ジオメトリであること
+      expect(mesh.geometry.attributes.position.count).toBeGreaterThan(100);
+    }
+  });
+
+  it('type: comment オブジェクトが3D空間に吹き出し・引き出し線として描画されること', () => {
+    const builder = new ModelBuilder();
+    const commentObj = {
+      id: 'comment-1',
+      name: '注記テスト',
+      type: 'comment' as const,
+      text: '下水接続口',
+      position: { x: 0.84, y: 0.13, z: 1.92 },
+      quaternion: { x: 0, y: 0, z: 0, w: 1 },
+      size: { x: 0, y: 0, z: 0 },
+      color: { r: 0, g: 0, b: 0 },
+      arrowPoint: { x: 1.07, y: 0.03, z: 1.98 },
+      fontSize: 28,
+      backgroundColor: { r: 1, g: 1, b: 0.8, a: 1 },
+      visible: true
+    };
+
+    const group = builder.build([commentObj]);
+    expect(group.children).toHaveLength(1);
+
+    const commentGroup = group.children[0] as THREE.Group;
+    expect(commentGroup).toBeInstanceOf(THREE.Group);
+    expect(commentGroup.name).toBe('comment-comment-1');
+
+    // テキストラベルと引き出し線(矢印)が含まれていること
+    expect(commentGroup.children.length).toBeGreaterThanOrEqual(2);
+
+    // テキストラベルメッシュの検証
+    const labelMesh = commentGroup.children.find(c => c instanceof THREE.Mesh) as THREE.Mesh;
+    expect(labelMesh).toBeDefined();
+    expect(labelMesh.geometry).toBeInstanceOf(THREE.PlaneGeometry);
+
+    // 引出線(Line)の検証
+    const line = commentGroup.children.find(c => c instanceof THREE.Line) as THREE.Line;
+    expect(line).toBeDefined();
+
+    // 007.cadiy4 の下水接続口コメントが正しく構築されること
+    const filePath = path.resolve(__dirname, '../../testdata/007.cadiy4');
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const parser = new Cadiy4Parser();
+    const data = parser.parse(content);
+    const comment007 = data.objects.find(o => o.type === 'comment')!;
+    expect(comment007).toBeDefined();
+
+    const group007 = builder.build([comment007]);
+    expect(group007.children).toHaveLength(1);
+    expect(group007.children[0].name).toBe(`comment-${comment007.id}`);
+  });
+
+  it('type: dimension のフォントサイズ・ラベルが大きく視認しやすく表示されること', () => {
+    const builder = new ModelBuilder();
+    const dimObj = {
+      id: 'dim-1',
+      name: '寸法1200',
+      type: 'dimension' as const,
+      size: { x: 0.24, y: 0, z: 1.2 },
+      position: { x: 0, y: 0, z: 0 },
+      quaternion: { x: 0, y: 0, z: 0, w: 1 },
+      color: { r: 0.2, g: 0.2, b: 0.2 },
+      fontSize: 24,
+      visible: true
+    };
+
+    const group = builder.build([dimObj]);
+    const dimGroup = group.children[0] as THREE.Group;
+
+    // 寸法値ラベルメッシュを探す
+    const labelMesh = dimGroup.children.find(c => c instanceof THREE.Mesh) as THREE.Mesh;
+    expect(labelMesh).toBeDefined();
+
+    labelMesh.geometry.computeBoundingBox();
+    const bb = labelMesh.geometry.boundingBox!;
+    const labelWidth = bb.max.x - bb.min.x;
+    const labelHeight = bb.max.y - bb.min.y;
+
+    // 以前の 0.06 x 0.03 より十分大きく(幅0.15m以上、高さ0.06m以上)生成されること
+    expect(labelWidth).toBeGreaterThanOrEqual(0.15);
+    expect(labelHeight).toBeGreaterThanOrEqual(0.06);
+  });
+
+  it('dummy: true のオブジェクトはワイヤフレームマテリアルで描画されること', () => {
+    const builder = new ModelBuilder();
+    const dummyLumber = {
+      id: 'dummy-lumber',
+      name: '参考角材',
+      type: 'lumber' as const,
+      dummy: true,
+      size: { x: 0.05, y: 0.05, z: 0.5 },
+      position: { x: 0, y: 0, z: 0 },
+      quaternion: { x: 0, y: 0, z: 0, w: 1 },
+      color: { r: 0.5, g: 0.5, b: 0.5 },
+      visible: true
+    };
+
+    const normalLumber = {
+      id: 'normal-lumber',
+      name: '通常角材',
+      type: 'lumber' as const,
+      dummy: false,
+      size: { x: 0.05, y: 0.05, z: 0.5 },
+      position: { x: 0.1, y: 0, z: 0 },
+      quaternion: { x: 0, y: 0, z: 0, w: 1 },
+      color: { r: 0.8, g: 0.6, b: 0.4 },
+      visible: true
+    };
+
+    const group = builder.build([dummyLumber, normalLumber]);
+    const dummyMesh = group.children.find(c => c.name === '参考角材') as THREE.Mesh;
+    const normalMesh = group.children.find(c => c.name === '通常角材') as THREE.Mesh;
+
+    expect(dummyMesh).toBeDefined();
+    expect(normalMesh).toBeDefined();
+
+    const dummyMat = dummyMesh.material as THREE.Material;
+    const normalMat = normalMesh.material as THREE.Material;
+
+    // dummy: true は wireframe: true であること
+    expect((dummyMat as any).wireframe).toBe(true);
+    // 通常部材はワイヤフレームではないこと
+    expect((normalMat as any).wireframe).toBeFalsy();
+
+    // 003.cadiy4 の dummy パーツ検証
+    const filePath = path.resolve(__dirname, '../../testdata/003.cadiy4');
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const parser = new Cadiy4Parser();
+    const data = parser.parse(content);
+
+    const dummyObjs003 = data.objects.filter(o => (o as any).dummy === true);
+    expect(dummyObjs003.length).toBeGreaterThan(0);
+
+    const group003 = builder.build(dummyObjs003);
+    for (const dObj of dummyObjs003) {
+      const mesh = group003.children.find(c => (c.userData.cadiyObject as any)?.id === dObj.id) as THREE.Mesh;
+      expect(mesh).toBeDefined();
+      expect((mesh.material as any).wireframe).toBe(true);
+    }
+  });
 });
