@@ -495,7 +495,7 @@ describe('ModelBuilder', () => {
   });
 
   it('001_tana.cadiy4 の側板 (edgeIndex: 6) が上部で斜めカットされ、底板 (edgeIndex: 6, 7) の手前側が角丸になること', () => {
-    const filePath = path.resolve(__dirname, '../../testdata/001_tana.cadiy4');
+    const filePath = path.resolve(__dirname, '../data/001_tana.cadiy4');
     const content = fs.readFileSync(filePath, 'utf-8');
     const parser = new Cadiy4Parser();
     const data = parser.parse(content);
