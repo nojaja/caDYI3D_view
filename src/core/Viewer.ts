@@ -25,6 +25,17 @@ export class Viewer {
   private onObjectSelected?: (object: CadiyObject | null) => void;
   private animationFrameId: number | null = null;
 
+  // 選択中オブジェクトの3Dハイライト管理 (Rのみ、透明度50%)
+  private highlightedMesh: THREE.Mesh | null = null;
+  private originalMaterial: THREE.Material | THREE.Material[] | null = null;
+
+  // スマホ長押しタップ判定管理
+  private longPressTimer: any = null;
+  private touchStartX = 0;
+  private touchStartY = 0;
+  private longPressTarget: CadiyObject | null = null;
+  private lastTouchEndTime = 0;
+
   constructor(options: ViewerOptions) {
     this.container = options.container;
     this.onObjectSelected = options.onObjectSelected;
@@ -122,6 +133,9 @@ export class Viewer {
    * cadiy4 データをロードしてシーンに配置する
    */
   public loadModel(data: Cadiy4Data, isObjectVisible?: (objectId: string) => boolean): void {
+    // 既存ハイライトの破棄
+    this.highlightObject(null);
+
     // 既存モデルの破棄
     if (this.currentModelGroup) {
       this.scene.remove(this.currentModelGroup);
@@ -250,6 +264,63 @@ export class Viewer {
     }
   }
 
+  private findMeshByObjectId(objectId: string): THREE.Mesh | null {
+    if (!this.currentModelGroup) return null;
+    let found: THREE.Mesh | null = null;
+    this.currentModelGroup.traverse((child) => {
+      if (!found && (child as THREE.Mesh).isMesh && child.userData?.cadiyObject?.id === objectId) {
+        found = child as THREE.Mesh;
+      }
+    });
+    return found;
+  }
+
+  /**
+   * 3Dviewで選択されたオブジェクトをハイライト表示する
+   * 要件: カラー(RGB)をRのみにして、α(透明度)を50%にする。選択解除時は元に戻す。
+   */
+  public highlightObject(objectId: string | null): void {
+    // 既存のハイライトを元に戻す
+    if (this.highlightedMesh && this.originalMaterial) {
+      this.highlightedMesh.material = this.originalMaterial;
+      this.highlightedMesh = null;
+      this.originalMaterial = null;
+    }
+
+    if (!objectId) return;
+
+    const mesh = this.findMeshByObjectId(objectId);
+    if (mesh) {
+      this.highlightedMesh = mesh;
+      this.originalMaterial = mesh.material;
+
+      const obj = mesh.userData?.cadiyObject as CadiyObject | undefined;
+      if (Array.isArray(mesh.material)) {
+        mesh.material = (mesh.material as THREE.Material[]).map((mat: THREE.Material) =>
+          this.createSelectedMaterial(mat, obj)
+        );
+      } else {
+        mesh.material = this.createSelectedMaterial(
+          mesh.material as THREE.Material,
+          obj
+        );
+      }
+    }
+  }
+
+  private createSelectedMaterial(baseMat: THREE.Material, obj?: CadiyObject): THREE.Material {
+    const selectedMat = baseMat.clone() as any;
+    if (selectedMat.color) {
+      const origR = obj?.color?.r ?? selectedMat.color.r;
+      const r = Math.max(origR, 0.85); // 確実に赤く視認できるように
+      selectedMat.color.setRGB(r, 0, 0); // カラー(RGB)をRのみにする
+    }
+    selectedMat.transparent = true;
+    selectedMat.opacity = 0.5; // α(透明度)を50%
+    selectedMat.needsUpdate = true;
+    return selectedMat;
+  }
+
   /**
    * モデル全体が収まるようにカメラ視点を自動調整する
    */
@@ -306,7 +377,12 @@ export class Viewer {
 
     const canvas = this.renderer.domElement;
     canvas.addEventListener('click', this.onCanvasClick.bind(this));
+
+    // スマホ表示向けの長押しタップ判定
+    canvas.addEventListener('touchstart', this.onCanvasTouchStart.bind(this), { passive: true });
+    canvas.addEventListener('touchmove', this.onCanvasTouchMove.bind(this), { passive: true });
     canvas.addEventListener('touchend', this.onCanvasTouchEnd.bind(this), { passive: true });
+    canvas.addEventListener('touchcancel', this.onCanvasTouchCancel.bind(this), { passive: true });
   }
 
   private onWindowResize(): void {
@@ -320,27 +396,127 @@ export class Viewer {
   }
 
   private onCanvasClick(e: MouseEvent): void {
+    // タッチ操作直後の合成クリックイベント、またはスマホ環境の場合はクリック選択をスキップ
+    if (Date.now() - this.lastTouchEndTime < 500) return;
+    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+    if (isMobile) return;
+
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
     this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
     this.pickObject();
   }
 
-  private onCanvasTouchEnd(e: TouchEvent): void {
-    if (e.changedTouches.length !== 1) return;
-    const touch = e.changedTouches[0];
+  private onCanvasTouchStart(e: TouchEvent): void {
+    if (e.touches.length !== 1) {
+      this.cancelLongPress();
+      return;
+    }
+    const touch = e.touches[0];
+    this.touchStartX = touch.clientX;
+    this.touchStartY = touch.clientY;
+
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.mouse.x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
     this.mouse.y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
-    this.pickObject();
-  }
 
-  private pickObject(): void {
-    if (!this.currentModelGroup) {
-      if (this.onObjectSelected) this.onObjectSelected(null);
+    // タッチ位置のオブジェクトを判定
+    const targetObj = this.getIntersectedObject();
+    if (!targetObj) {
+      this.cancelLongPress();
       return;
     }
 
+    this.longPressTarget = targetObj;
+    this.startLongPressIndicator(touch.clientX, touch.clientY);
+
+    // 500msの長押しタイマー
+    this.longPressTimer = setTimeout(() => {
+      this.completeLongPress();
+    }, 500);
+  }
+
+  private onCanvasTouchMove(e: TouchEvent): void {
+    if (!this.longPressTimer) return;
+    if (e.touches.length !== 1) {
+      this.cancelLongPress();
+      return;
+    }
+    const touch = e.touches[0];
+    const dx = touch.clientX - this.touchStartX;
+    const dy = touch.clientY - this.touchStartY;
+    // 10px以上動いた場合はカメラ操作と判定して長押しをキャンセル
+    if (Math.hypot(dx, dy) > 10) {
+      this.cancelLongPress();
+    }
+  }
+
+  private onCanvasTouchEnd(_e: TouchEvent): void {
+    this.lastTouchEndTime = Date.now();
+    this.cancelLongPress();
+  }
+
+  private onCanvasTouchCancel(): void {
+    this.lastTouchEndTime = Date.now();
+    this.cancelLongPress();
+  }
+
+  private cancelLongPress(): void {
+    if (this.longPressTimer) {
+      clearTimeout(this.longPressTimer);
+      this.longPressTimer = null;
+    }
+    this.longPressTarget = null;
+    this.hideLongPressIndicator();
+  }
+
+  private completeLongPress(): void {
+    const target = this.longPressTarget;
+    this.cancelLongPress();
+    if (target) {
+      this.showLongPressCompleted(this.touchStartX, this.touchStartY);
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try { navigator.vibrate(40); } catch (_) {}
+      }
+      if (this.onObjectSelected) {
+        this.onObjectSelected(target);
+      }
+    }
+  }
+
+  private startLongPressIndicator(x: number, y: number): void {
+    const el = document.getElementById('long-press-indicator');
+    if (!el) return;
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    el.classList.remove('completed', 'filling');
+    el.classList.add('active');
+    requestAnimationFrame(() => {
+      if (el.classList.contains('active')) {
+        el.classList.add('filling');
+      }
+    });
+  }
+
+  private hideLongPressIndicator(): void {
+    const el = document.getElementById('long-press-indicator');
+    if (!el) return;
+    el.classList.remove('active', 'filling');
+  }
+
+  private showLongPressCompleted(x: number, y: number): void {
+    const el = document.getElementById('long-press-indicator');
+    if (!el) return;
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    el.classList.add('active', 'filling', 'completed');
+    setTimeout(() => {
+      el.classList.remove('active', 'filling', 'completed');
+    }, 250);
+  }
+
+  private getIntersectedObject(): CadiyObject | null {
+    if (!this.currentModelGroup) return null;
     this.raycaster.setFromCamera(this.mouse, this.camera);
     const intersects = this.raycaster.intersectObjects(this.currentModelGroup.children, true);
 
@@ -350,12 +526,17 @@ export class Viewer {
         curr = curr.parent;
       }
       if (curr && curr.userData?.cadiyObject) {
-        if (this.onObjectSelected) this.onObjectSelected(curr.userData.cadiyObject);
-        return;
+        return curr.userData.cadiyObject;
       }
     }
+    return null;
+  }
 
-    if (this.onObjectSelected) this.onObjectSelected(null);
+  private pickObject(): void {
+    const obj = this.getIntersectedObject();
+    if (this.onObjectSelected) {
+      this.onObjectSelected(obj);
+    }
   }
 
   private animate(): void {
@@ -433,6 +614,8 @@ export class Viewer {
   }
 
   public dispose(): void {
+    this.cancelLongPress();
+    this.highlightObject(null);
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
     }

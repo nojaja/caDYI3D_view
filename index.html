@@ -112,6 +112,15 @@
         <div class="spinner"></div>
         <div style="font-size: 14px; font-weight: 600; color: #4b5563;">3Dモデル読み込み中...</div>
       </div>
+
+      <!-- スマホ長押しタップ示唆インジケータ -->
+      <div id="long-press-indicator" class="long-press-indicator">
+        <svg class="long-press-svg" viewBox="0 0 60 60">
+          <circle class="long-press-bg" cx="30" cy="30" r="24" />
+          <circle class="long-press-ring" cx="30" cy="30" r="24" />
+        </svg>
+        <div class="long-press-center-dot"></div>
+      </div>
     </div>
 
     <script type="module" src="/src/main.ts"></script>

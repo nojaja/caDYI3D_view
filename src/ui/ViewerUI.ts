@@ -35,6 +35,7 @@ export class ViewerUI {
   private modeBtnThreeView: HTMLElement;
 
   private isSelectingFrom3D = false;
+  private isInspectorOpen = false;
 
   constructor(viewer: Viewer) {
     this.viewer = viewer;
@@ -139,6 +140,7 @@ export class ViewerUI {
 
     // 4. インスペクタ閉じるボタン
     document.getElementById('btn-close-inspector')?.addEventListener('click', () => {
+      this.isInspectorOpen = false;
       this.hideInspector();
       this.layerManager.selectObject(null);
       this.updateSelectedLayerItem(null);
@@ -160,6 +162,17 @@ export class ViewerUI {
     window.addEventListener('resize', () => {
       if (this.viewModeManager.getCurrentMode() === 'cutList') {
         this.updateCutPlanFontSizes();
+      }
+    });
+
+    // 7. 材料取り図内のパーツクリック/タップで選択状態にする
+    this.cutlistSheetsContainer.addEventListener('click', (e) => {
+      const target = (e.target as HTMLElement).closest('[data-object-id]');
+      if (target) {
+        const objId = target.getAttribute('data-object-id');
+        if (objId) {
+          this.layerManager.selectObject(objId);
+        }
       }
     });
   }
@@ -198,11 +211,21 @@ export class ViewerUI {
       this.threeviewContainer.style.display = 'none';
       this.bottomControls.style.display = 'flex';
       this.layerPanel.style.display = 'block';
+
+      // 3Dview表示の時のみ inspector-card を再表示（閉じるボタンが押されるまでは維持）
+      if (this.isInspectorOpen && this.layerManager.getSelectedObjectId()) {
+        const obj = this.viewer.getObjectById(this.layerManager.getSelectedObjectId()!);
+        if (obj) {
+          this.renderInspectorContent(obj);
+          this.inspectorCard.classList.add('active');
+        }
+      }
     } else if (mode === 'cutList') {
       this.cutlistViewContainer.style.display = 'block';
       this.threeviewContainer.style.display = 'none';
       this.bottomControls.style.display = 'none';
       this.layerPanel.style.display = 'none';
+      // 3Dview以外の時は一時的に非表示（isInspectorOpen フラグは維持）
       this.hideInspector();
       this.renderCutListView();
     } else if (mode === 'threeView') {
@@ -210,6 +233,7 @@ export class ViewerUI {
       this.threeviewContainer.style.display = 'block';
       this.bottomControls.style.display = 'none';
       this.layerPanel.style.display = 'none';
+      // 3Dview以外の時は一時的に非表示（isInspectorOpen フラグは維持）
       this.hideInspector();
     }
   }
@@ -240,6 +264,9 @@ export class ViewerUI {
 
     // レンダリング後に画面サイズに合わせてフォントサイズを動的調整
     this.updateCutPlanFontSizes();
+
+    // 選択中オブジェクトがあれば材料取り図上でもハイライト
+    this.updateSelectedCutPlanPart(this.layerManager.getSelectedObjectId());
   }
 
   /**
@@ -421,7 +448,7 @@ export class ViewerUI {
     // 上側コーナーは線の外側(上)に-0.4em、下側コーナーは線の外側(下)に1.2emオフセット
     const dyAttr = isTopCorner ? '-0.4em' : '1.2em';
 
-    return `<text x="${midX.toFixed(1)}" y="${midY.toFixed(1)}" transform="rotate(${angleDeg.toFixed(1)}, ${midX.toFixed(1)}, ${midY.toFixed(1)})" dy="${dyAttr}" class="cutplan-diag-cut-label" font-size="${fsText}" font-weight="bold" fill="#b91c1c" text-anchor="middle">✂ 斜めカット: ${ViewerUI.formatCutPlanSize(cutA)} × ${ViewerUI.formatCutPlanSize(cutB)}</text>`;
+    return `<text x="${midX.toFixed(1)}" y="${midY.toFixed(1)}" transform="rotate(${angleDeg.toFixed(1)}, ${midX.toFixed(1)}, ${midY.toFixed(1)})" dy="${dyAttr}" class="cutplan-diag-cut-label" font-size="${fsText}" font-weight="bold" fill="#b91c1c" text-anchor="middle" pointer-events="none" style="pointer-events: none;">✂ 斜めカット: ${ViewerUI.formatCutPlanSize(cutA)} × ${ViewerUI.formatCutPlanSize(cutB)}</text>`;
   }
 
   /**
@@ -483,8 +510,8 @@ export class ViewerUI {
         ].join(' ');
 
         svgInner += `<polygon points="${scrapPoints}" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,4" />`;
-        svgInner += `<polygon points="${polyPoints}" class="cutplan-svg-part" fill="#fde68a" stroke="#d97706" stroke-width="2" />`;
-        svgInner += `<line x1="${px + pw - cutB}" y1="${py}" x2="${px + pw}" y2="${py + cutA}" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2.5" />`;
+        svgInner += `<polygon points="${polyPoints}" class="cutplan-svg-part" data-object-id="${item.object.id}" fill="#fde68a" stroke="#d97706" stroke-width="2" />`;
+        svgInner += `<line x1="${px + pw - cutB}" y1="${py}" x2="${px + pw}" y2="${py + cutA}" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2.5" pointer-events="none" style="pointer-events: none;" />`;
         svgInner += ViewerUI.renderDiagonalCutLabel(
           px + pw - cutB, py,
           px + pw, py + cutA,
@@ -510,8 +537,8 @@ export class ViewerUI {
         ].join(' ');
 
         svgInner += `<polygon points="${scrapPoints}" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,4" />`;
-        svgInner += `<polygon points="${polyPoints}" class="cutplan-svg-part" fill="#fde68a" stroke="#d97706" stroke-width="2" />`;
-        svgInner += `<line x1="${px + cutB}" y1="${py + ph}" x2="${px}" y2="${py + ph - cutA}" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2.5" />`;
+        svgInner += `<polygon points="${polyPoints}" class="cutplan-svg-part" data-object-id="${item.object.id}" fill="#fde68a" stroke="#d97706" stroke-width="2" />`;
+        svgInner += `<line x1="${px + cutB}" y1="${py + ph}" x2="${px}" y2="${py + ph - cutA}" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2.5" pointer-events="none" style="pointer-events: none;" />`;
         svgInner += ViewerUI.renderDiagonalCutLabel(
           px, py + ph - cutA,
           px + cutB, py + ph,
@@ -537,8 +564,8 @@ export class ViewerUI {
         ].join(' ');
 
         svgInner += `<polygon points="${scrapPoints}" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,4" />`;
-        svgInner += `<polygon points="${polyPoints}" class="cutplan-svg-part" fill="#fde68a" stroke="#d97706" stroke-width="2" />`;
-        svgInner += `<line x1="${px + pw - cutB}" y1="${py + ph}" x2="${px + pw}" y2="${py + ph - cutA}" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2.5" />`;
+        svgInner += `<polygon points="${polyPoints}" class="cutplan-svg-part" data-object-id="${item.object.id}" fill="#fde68a" stroke="#d97706" stroke-width="2" />`;
+        svgInner += `<line x1="${px + pw - cutB}" y1="${py + ph}" x2="${px + pw}" y2="${py + ph - cutA}" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2.5" pointer-events="none" style="pointer-events: none;" />`;
         svgInner += ViewerUI.renderDiagonalCutLabel(
           px + pw - cutB, py + ph,
           px + pw, py + ph - cutA,
@@ -564,8 +591,8 @@ export class ViewerUI {
         ].join(' ');
 
         svgInner += `<polygon points="${scrapPoints}" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,4" />`;
-        svgInner += `<polygon points="${polyPoints}" class="cutplan-svg-part" fill="#fde68a" stroke="#d97706" stroke-width="2" />`;
-        svgInner += `<line x1="${px + cutB}" y1="${py}" x2="${px}" y2="${py + cutA}" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2.5" />`;
+        svgInner += `<polygon points="${polyPoints}" class="cutplan-svg-part" data-object-id="${item.object.id}" fill="#fde68a" stroke="#d97706" stroke-width="2" />`;
+        svgInner += `<line x1="${px + cutB}" y1="${py}" x2="${px}" y2="${py + cutA}" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2.5" pointer-events="none" style="pointer-events: none;" />`;
         svgInner += ViewerUI.renderDiagonalCutLabel(
           px, py + cutA,
           px + cutB, py,
@@ -573,7 +600,7 @@ export class ViewerUI {
         );
       } else {
         // 通常の長方形パーツ (border-radius廃止: rx="0")
-        svgInner += `<rect x="${px}" y="${py}" width="${pw}" height="${ph}" class="cutplan-svg-part" fill="#fde68a" stroke="#d97706" stroke-width="2" rx="0" />`;
+        svgInner += `<rect x="${px}" y="${py}" width="${pw}" height="${ph}" class="cutplan-svg-part" data-object-id="${item.object.id}" fill="#fde68a" stroke="#d97706" stroke-width="2" rx="0" />`;
       }
 
       // パーツ名・寸法ラベル (cutplan-part-size はパーツの上下中央 labelY に配置)
@@ -581,9 +608,9 @@ export class ViewerUI {
       const labelY = py + ph / 2;
       const { partName, sizeText } = ViewerUI.getPartLabelInfo(item, true);
       svgInner += `
-        <g class="cutplan-part-label" data-center-y="${labelY}">
-          <text x="${labelX}" y="${labelY - offsetY}" class="cutplan-part-name" font-size="${fsText}" font-weight="bold" fill="#92400e" text-anchor="middle">${partName}</text>
-          <text x="${labelX}" y="${labelY}" class="cutplan-part-size" font-size="${fsText}" font-weight="bold" fill="#78350f" text-anchor="middle" dominant-baseline="central">${sizeText}</text>
+        <g class="cutplan-part-label" data-object-id="${item.object.id}" data-center-y="${labelY}" pointer-events="none" style="pointer-events: none;">
+          <text x="${labelX}" y="${labelY - offsetY}" class="cutplan-part-name" font-size="${fsText}" font-weight="bold" fill="#92400e" text-anchor="middle" pointer-events="none">${partName}</text>
+          <text x="${labelX}" y="${labelY}" class="cutplan-part-size" font-size="${fsText}" font-weight="bold" fill="#78350f" text-anchor="middle" dominant-baseline="central" pointer-events="none">${sizeText}</text>
         </g>
       `;
     }
@@ -683,15 +710,15 @@ export class ViewerUI {
       const { partName, sizeText } = ViewerUI.getPartLabelInfo(item, false);
 
       // パーツ本体
-      svgInner += `<rect x="${curX}" y="0" width="${pw}" height="${boardHeight}" class="cutplan-svg-part" fill="#fde68a" stroke="#d97706" stroke-width="2" rx="0" />`;
+      svgInner += `<rect x="${curX}" y="0" width="${pw}" height="${boardHeight}" class="cutplan-svg-part" data-object-id="${item.object.id}" fill="#fde68a" stroke="#d97706" stroke-width="2" rx="0" />`;
 
       // パーツラベル & サイズ (cutplan-part-size はパーツの上下中央 boardHeight / 2 に配置)
       const midX = curX + pw / 2;
       const midY = boardHeight / 2;
       svgInner += `
-        <g class="cutplan-part-label" data-center-y="${midY}">
-          <text x="${midX}" y="${midY - offsetY1}" class="cutplan-part-name" font-size="${fsText}" font-weight="bold" fill="#92400e" text-anchor="middle">${partName}</text>
-          <text x="${midX}" y="${midY}" class="cutplan-part-size" font-size="${fsText}" font-weight="bold" fill="#78350f" text-anchor="middle" dominant-baseline="central">${sizeText}</text>
+        <g class="cutplan-part-label" data-object-id="${item.object.id}" data-center-y="${midY}" pointer-events="none" style="pointer-events: none;">
+          <text x="${midX}" y="${midY - offsetY1}" class="cutplan-part-name" font-size="${fsText}" font-weight="bold" fill="#92400e" text-anchor="middle" pointer-events="none">${partName}</text>
+          <text x="${midX}" y="${midY}" class="cutplan-part-size" font-size="${fsText}" font-weight="bold" fill="#78350f" text-anchor="middle" dominant-baseline="central" pointer-events="none">${sizeText}</text>
         </g>
       `;
 
@@ -785,15 +812,25 @@ export class ViewerUI {
     });
 
     this.layerManager.onSelect((objectId) => {
+      // 1. 3Dviewのハイライト (カラーRGBのRのみ、α50%)
+      this.viewer.highlightObject(objectId);
+
+      // 2. 材料取り図のハイライト (R強調)
+      this.updateSelectedCutPlanPart(objectId);
+
+      // 3. レイヤー一覧の選択状態
       this.renderLayerTree();
       this.updateSelectedLayerItem(objectId);
+
       if (this.isSelectingFrom3D) return;
 
       if (objectId) {
         const obj = this.viewer.getObjectById(objectId);
         this.handleObjectSelected(obj, 'layerTree');
       } else {
-        this.hideInspector();
+        if (!this.isInspectorOpen) {
+          this.hideInspector();
+        }
       }
     });
   }
@@ -982,43 +1019,25 @@ export class ViewerUI {
   }
 
   /**
-   * パーツが選択された際の詳細ビュー (インスペクタ) 表示
-   * @param object 選択対象のオブジェクト (null で選択解除)
-   * @param source 選択の発生元 ('viewer3d': 3Dキャンバスからのクリック/タップ, 'layerTree': レイヤーツリーからのタップ/クリック)
+   * 材料取り図 (Cut List) 上の選択中パーツのハイライト表示を更新する
+   * 要件: カラー(RGB)でRを強調して選択されていることがわかるようにする。解除時は元に戻る。
    */
-  public handleObjectSelected(object: CadiyObject | null, source: 'viewer3d' | 'layerTree' = 'viewer3d'): void {
-    if (!object) {
-      this.hideInspector();
-      if (source === 'viewer3d') {
-        this.isSelectingFrom3D = true;
-        try {
-          this.layerManager.selectObject(null);
-        } finally {
-          this.isSelectingFrom3D = false;
-        }
+  public updateSelectedCutPlanPart(selectedId: string | null): void {
+    const parts = this.cutlistSheetsContainer.querySelectorAll('.cutplan-svg-part');
+    parts.forEach((el) => {
+      const part = el as SVGElement;
+      if (selectedId && part.dataset.objectId === selectedId) {
+        part.classList.add('selected');
+      } else {
+        part.classList.remove('selected');
       }
-      return;
-    }
+    });
+  }
 
-    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
-
-    // スマホ表示時は layer-object-item をタップした時だけ inspector-card を表示する
-    // (スマホで3Dビューをタップ/スワイプしたときは inspector-card を非表示にする)
-    if (isMobile && source !== 'layerTree') {
-      this.hideInspector();
-      return;
-    }
-
-    // 3Dビューから選択された場合はレイヤーマネージャーの選択状態も同期
-    if (source === 'viewer3d') {
-      this.isSelectingFrom3D = true;
-      try {
-        this.layerManager.selectObject(object.id);
-      } finally {
-        this.isSelectingFrom3D = false;
-      }
-    }
-
+  /**
+   * インスペクターの詳細コンテンツをレンダリングする
+   */
+  private renderInspectorContent(object: CadiyObject): void {
     const props = formatObjectProperties(object);
     this.inspectorTitle.textContent = props.name;
 
@@ -1064,7 +1083,44 @@ export class ViewerUI {
     `;
 
     this.inspectorDetail.innerHTML = detailHtml;
-    this.inspectorCard.classList.add('active');
+  }
+
+  /**
+   * パーツが選択された際の詳細ビュー (インスペクタ) 表示
+   * @param object 選択対象のオブジェクト (null で選択解除)
+   * @param source 選択の発生元 ('viewer3d': 3Dキャンバスからのクリック/長押しタップ, 'layerTree': レイヤーツリーからのタップ/クリック)
+   */
+  public handleObjectSelected(object: CadiyObject | null, source: 'viewer3d' | 'layerTree' = 'viewer3d'): void {
+    if (!object) {
+      // 閉じるボタンが押されるまではインスペクターを表示し続ける（何もない箇所のクリック等では閉じない）
+      if (!this.isInspectorOpen) {
+        this.hideInspector();
+      }
+      return;
+    }
+
+    // 3Dビューからの選択の場合、レイヤーマネージャーの選択状態も同期
+    if (source === 'viewer3d') {
+      this.isSelectingFrom3D = true;
+      try {
+        this.layerManager.selectObject(object.id);
+      } finally {
+        this.isSelectingFrom3D = false;
+      }
+    }
+
+    // インスペクター表示状態フラグをON
+    this.isInspectorOpen = true;
+
+    // 詳細情報をレンダリング
+    this.renderInspectorContent(object);
+
+    // 要件: 表示するのは3Dview表示の時のみで、それ以外の時(材料取り図や三面図)は一時的に非表示（3Dviewに戻ると再表示）
+    if (this.viewModeManager.getCurrentMode() === '3d') {
+      this.inspectorCard.classList.add('active');
+    } else {
+      this.hideInspector();
+    }
   }
 
   private hideInspector(): void {

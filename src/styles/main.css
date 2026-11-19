@@ -590,12 +590,28 @@ html, body {
 }
 
 .cutplan-svg-part {
-  transition: opacity 0.15s ease;
+  transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .cutplan-svg-part:hover {
   opacity: 0.92;
+  filter: brightness(1.05);
+}
+
+/* 材料取り図で選択されたパーツ: カラー(RGB)でRを強調 */
+.cutplan-svg-part.selected {
+  fill: #fca5a5 !important;
+  stroke: #b91c1c !important;
+  stroke-width: 3.5 !important;
+  filter: drop-shadow(0 0 6px rgba(220, 38, 38, 0.7));
+}
+
+.cutplan-part-label,
+.cutplan-part-label * {
   cursor: pointer;
+  pointer-events: none !important;
+  user-select: none;
 }
 
 .cutplan-part-block {
@@ -911,4 +927,69 @@ html, body {
   .cutplan-sheet-header .cutplan-yield {
     display: none !important;
   }
+}
+
+/* スマホ長押しタップ示唆インジケータ */
+.long-press-indicator {
+  position: fixed;
+  width: 68px;
+  height: 68px;
+  margin-left: -34px;
+  margin-top: -34px;
+  pointer-events: none;
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  transform: scale(0.8);
+  opacity: 0;
+  transition: transform 0.15s ease-out, opacity 0.15s ease-out;
+}
+
+.long-press-indicator.active {
+  display: flex;
+  transform: scale(1);
+  opacity: 1;
+}
+
+.long-press-indicator.completed {
+  transform: scale(1.3);
+  opacity: 0;
+  transition: transform 0.25s ease-out, opacity 0.25s ease-out;
+}
+
+.long-press-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.long-press-bg {
+  fill: rgba(0, 0, 0, 0.25);
+  stroke: rgba(255, 255, 255, 0.35);
+  stroke-width: 3.5;
+}
+
+.long-press-ring {
+  fill: none;
+  stroke: #f87171;
+  stroke-width: 4.5;
+  stroke-linecap: round;
+  stroke-dasharray: 151; /* 2 * PI * 24 ≈ 150.8 */
+  stroke-dashoffset: 151;
+  transition: stroke-dashoffset 0.5s cubic-bezier(0.1, 0.7, 0.1, 1), stroke 0.5s ease;
+}
+
+.long-press-indicator.filling .long-press-ring {
+  stroke-dashoffset: 0;
+  stroke: #dc2626;
+}
+
+.long-press-center-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 6px rgba(220, 38, 38, 0.8);
 }
