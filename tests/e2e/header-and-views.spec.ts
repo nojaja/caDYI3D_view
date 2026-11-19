@@ -76,8 +76,12 @@ test.describe('caDIY3D Web Viewer - ヘッダ・表示モード・レイヤー�
     const layerHeader = page.locator('.layer-item-header').first();
     await expect(layerHeader).toBeVisible();
 
-    // レイヤー配下にオブジェクト一覧が表示されること
+    // 初期状態では閉じているため、オブジェクト一覧は非表示
     const objectList = page.locator('.layer-object-list').first();
+    await expect(objectList).toHaveCount(0);
+
+    // ヘッダーをクリックして展開するとオブジェクト一覧が表示されること
+    await layerHeader.click();
     await expect(objectList).toBeVisible();
 
     // 可視性トグルボタンが存在すること
@@ -86,6 +90,10 @@ test.describe('caDIY3D Web Viewer - ヘッダ・表示モード・レイヤー�
   });
 
   test('オブジェクト選択時に画面右側に詳細ビュー(インスペクタ)が表示され、プロパティが網羅されていること', async ({ page }) => {
+    // レイヤーを展開
+    const layerHeader = page.locator('.layer-item-header').first();
+    await layerHeader.click();
+
     // レイヤー内の部材アイテムをクリックして選択
     const firstObjectItem = page.locator('.layer-object-item').first();
     await firstObjectItem.click();

@@ -124,12 +124,13 @@
 
 #### 3. `picture` (画像・参考写真)
 3D空間上に配置される下絵・設計参考写真・テクスチャボードです。
-- `imageBase64`: Base64エンコードされた画像バイナリデータ文字列。
+- `imageBase64Id`: プロジェクトルートの `pictureImageTable` 内のエントリを参照する数値ID。
+- `imageBase64`: Base64エンコードされた画像バイナリデータ文字列（オブジェクト直接保持時）。なお画像テーブル内のデータは通常 zlib (deflate) 圧縮されたバイナリが base64 化されています。
 - `imageMimeType`: 画像のMIME形式（`"image/jpeg"`, `"image/png"`, `"image/webp"` 等）。
 - `aspectRatioFixed`: 縦横比固定フラグ（`boolean`）。
 - `aspectRatio`: 画像の縦横比（`width / height`）。
-- `dispPattern`: 表示パターンフラグ（片面/両面表示等）。
-- `contentRotation`: 画像の回転角度（`0, 90, 180, 270`）。
+- `dispPattern`: 表示パターンフラグ（`0`: 片面表示, `1`: 両面表示）。
+- `contentRotation`: 画像の時計回り回転角度（`0, 90, 180, 270`）。
 
 #### 4. `boolean` (ブーリアン加工パーツ)
 切削・差分・結合加工が行われた立体パーツです。

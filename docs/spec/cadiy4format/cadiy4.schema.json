@@ -62,6 +62,13 @@
     "cutList": {
       "$ref": "#/definitions/CutList"
     },
+    "pictureImageTable": {
+      "type": "array",
+      "description": "Table of embedded reference images (compressed/encoded) referenced by picture objects via imageBase64Id.",
+      "items": {
+        "$ref": "#/definitions/PictureImageItem"
+      }
+    },
     "polygonMeshTable": {
       "description": "Collection of polygon mesh geometry definition data keyed by internal mesh ID or stored as a table array.",
       "oneOf": [
@@ -290,6 +297,25 @@
           "items": {
             "$ref": "#/definitions/CutLayoutItem"
           }
+        }
+      }
+    },
+    "PictureImageItem": {
+      "type": "object",
+      "description": "Embedded picture image resource entry.",
+      "required": ["id", "imageBase64"],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Unique image ID referenced by picture object imageBase64Id."
+        },
+        "imageBase64Id": {
+          "type": "integer",
+          "description": "ID reference to pictureImageTable item."
+        },
+        "imageBase64": {
+          "type": "string",
+          "description": "Base64-encoded image binary data (typically zlib deflate compressed)."
         }
       }
     },
@@ -581,6 +607,10 @@
           "items": {
             "$ref": "#/definitions/SourceMaterial"
           }
+        },
+        "imageBase64Id": {
+          "type": "integer",
+          "description": "ID reference to pictureImageTable item."
         },
         "imageBase64": {
           "type": "string",

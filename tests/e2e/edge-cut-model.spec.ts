@@ -11,7 +11,10 @@ test.describe('caDIY3D Web Viewer - 形状加工(edgeCuts)付き合板 3D描画 
     const modelTitle = page.locator('#model-title');
     await expect(modelTitle).toBeVisible();
 
-    // レイヤーツリーのパーツ一覧から "OSB合板" をクリック
+    // レイヤーツリーを展開してパーツ一覧から "OSB合板" をクリック
+    const layerHeader = page.locator('.layer-item-header').first();
+    await layerHeader.click();
+
     const partItem = page.locator('.layer-object-item', { hasText: 'OSB合板' }).first();
     await expect(partItem).toBeVisible();
     await partItem.click();
@@ -51,9 +54,10 @@ test.describe('caDIY3D Web Viewer - 形状加工(edgeCuts)付き合板 3D描画 
     const svgCanvas = sheetItem.locator('.cutplan-svg-canvas');
     await expect(svgCanvas).toBeVisible();
 
-    // SVG内に部材寸法 (910 × 1820 mm) が表記されていること
+    // SVG内に部材寸法 (910 × 1356 mm および 910 × 212 mm) が表記されていること
     await expect(svgCanvas).toContainText('910');
-    await expect(svgCanvas).toContainText('1820');
+    await expect(svgCanvas).toContainText('1356');
+    await expect(svgCanvas).toContainText('212');
 
     // SVG内に「斜めカット」の切断表記および寸法 (792.5 × 198.5mm) が表記されていること
     await expect(svgCanvas).toContainText('斜めカット');

@@ -206,8 +206,14 @@ export interface PolygonObject extends CadiyObjectBase {
   faces?: any[] | string;
 }
 
+export interface PictureImageItem {
+  id: number;
+  imageBase64: string;
+}
+
 export interface PictureObject extends CadiyObjectBase {
   type: 'picture';
+  imageBase64Id?: number;
   imageBase64?: string;
   imageMimeType?: string;
   aspectRatioFixed?: boolean;
@@ -308,5 +314,6 @@ export interface Cadiy4Data {
   selectedIds?: string[];
   snaps?: any[];
   cutList?: CutListData;
+  pictureImageTable?: PictureImageItem[];
   polygonMeshTable?: PolygonMeshItem[] | Record<string, PolygonMesh>;
 }

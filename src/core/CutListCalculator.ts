@@ -79,8 +79,26 @@ export class CutListCalculator {
       if (obj.type === 'board') {
         const dimX = obj.size.x * 1000;
         const dimZ = obj.size.z * 1000;
-        lengthMm = Math.max(dimX, dimZ);
-        widthMm = Math.min(dimX, dimZ);
+        const stdDim = this.parseStandardDimensions(obj, defaultLengthMm);
+        if (stdDim.widthMm > 0 && stdDim.lengthMm > 0) {
+          if (dimX <= stdDim.widthMm && dimZ <= stdDim.lengthMm) {
+            // 回転なしで原板幅・長さに収まる場合
+            widthMm = dimX;
+            lengthMm = dimZ;
+          } else if (dimZ <= stdDim.widthMm && dimX <= stdDim.lengthMm) {
+            // 90度回転して原板幅・長さに収まる場合
+            widthMm = dimZ;
+            lengthMm = dimX;
+          } else {
+            // はみ出る場合は長辺を長さ、短辺を幅
+            lengthMm = Math.max(dimX, dimZ);
+            widthMm = Math.min(dimX, dimZ);
+          }
+        } else {
+          // 規格指定がない場合は長辺を長さ、短辺を幅
+          lengthMm = Math.max(dimX, dimZ);
+          widthMm = Math.min(dimX, dimZ);
+        }
       } else {
         lengthMm = Math.max(obj.size.x, obj.size.y, obj.size.z) * 1000;
         widthMm = (obj.size.x === lengthMm / 1000 ? obj.size.y : obj.size.x) * 1000;
@@ -179,8 +197,30 @@ export class CutListCalculator {
       const dimZ = obj.size.z * 1000;
 
       const isBoard = obj.type === 'board';
-      const lengthMm = isBoard ? Math.max(dimX, dimZ) : Math.max(dimX, dimY, dimZ);
-      const widthMm = isBoard ? Math.min(dimX, dimZ) : Math.min(dimX, dimY);
+      let lengthMm: number;
+      let widthMm: number;
+
+      if (isBoard) {
+        const std = this.parseStandardDimensions(obj, defaultLengthMm);
+        if (std.widthMm > 0 && std.lengthMm > 0) {
+          if (dimX <= std.widthMm && dimZ <= std.lengthMm) {
+            widthMm = dimX;
+            lengthMm = dimZ;
+          } else if (dimZ <= std.widthMm && dimX <= std.lengthMm) {
+            widthMm = dimZ;
+            lengthMm = dimX;
+          } else {
+            lengthMm = Math.max(dimX, dimZ);
+            widthMm = Math.min(dimX, dimZ);
+          }
+        } else {
+          lengthMm = Math.max(dimX, dimZ);
+          widthMm = Math.min(dimX, dimZ);
+        }
+      } else {
+        lengthMm = Math.max(dimX, dimY, dimZ);
+        widthMm = Math.min(dimX, dimY);
+      }
 
       const stdDim = this.parseStandardDimensions(obj, lengthMm);
       const sheetLengthMm = Math.max(stdDim.lengthMm, lengthMm);

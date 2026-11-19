@@ -2,7 +2,7 @@ import { Viewer } from '../core/Viewer';
 import { ModelLoader } from '../loader/ModelLoader';
 import { CadiyObject, Cadiy4Data } from '../types/cadiy4';
 import { ViewModeManager, ViewMode } from '../core/ViewModeManager';
-import { LayerManager } from '../core/LayerManager';
+import { LayerManager, LayerTreeNode } from '../core/LayerManager';
 import { formatObjectProperties } from '../utils/propertyFormatter';
 import { CutListCalculator, CutPlanSheet } from '../core/CutListCalculator';
 
@@ -397,8 +397,8 @@ export class ViewerUI {
   }
 
   private initLayerEvents(): void {
-    this.layerManager.onVisibilityChange((layerId, visible) => {
-      this.viewer.setLayerVisibility(layerId, visible);
+    this.layerManager.onVisibilityChange(() => {
+      this.viewer.syncVisibility((objId) => this.layerManager.isObjectVisible(objId));
       this.renderLayerTree();
     });
 
@@ -462,8 +462,9 @@ export class ViewerUI {
     this.modelTitle.textContent = modelName;
     this.modelTitle.title = modelName;
 
-    this.viewer.loadModel(data);
+    // レイヤーマネージャを先に初期化し、初期可視性を Viewer に渡して構築
     this.layerManager.init(data.layers, data.objects);
+    this.viewer.loadModel(data, (objId) => this.layerManager.isObjectVisible(objId));
     this.renderLayerTree();
     this.hideInspector();
 
@@ -473,63 +474,85 @@ export class ViewerUI {
   }
 
   /**
-   * レイヤーツリーのHTMLレンダリング
+   * レイヤーツリーのHTMLレンダリング（n段再帰対応）
    */
   private renderLayerTree(): void {
     const tree = this.layerManager.getTree();
     this.layerTreeContainer.innerHTML = '';
 
     for (const node of tree) {
-      const layerItem = document.createElement('div');
-      layerItem.className = 'layer-item';
+      this.layerTreeContainer.appendChild(this.renderLayerNode(node));
+    }
+  }
 
-      const isExpanded = node.isExpanded;
-      const isVisible = node.layer.visible;
+  private renderLayerNode(node: LayerTreeNode): HTMLElement {
+    const layerItem = document.createElement('div');
+    layerItem.className = 'layer-item';
+    layerItem.dataset.layerId = String(node.layer.id);
+    layerItem.dataset.depth = String(node.depth);
 
-      // ヘッダー行
-      const header = document.createElement('div');
-      header.className = 'layer-item-header';
+    const isExpanded = node.isExpanded;
+    const isVisible = node.layer.visible;
+    const isEffectivelyVisible = this.layerManager.isLayerEffectivelyVisible(node.layer.id);
 
-      const left = document.createElement('div');
-      left.className = 'layer-header-left';
+    // ヘッダー行
+    const header = document.createElement('div');
+    header.className = 'layer-item-header';
+    if (node.depth > 0) {
+      header.style.paddingLeft = `calc(12px + ${node.depth * 14}px)`;
+    }
 
-      const toggleIcon = document.createElement('span');
-      toggleIcon.className = 'layer-toggle-icon';
-      toggleIcon.textContent = isExpanded ? '▼' : '▶';
+    const left = document.createElement('div');
+    left.className = 'layer-header-left';
 
-      const layerName = document.createElement('span');
-      layerName.className = 'layer-name';
-      layerName.textContent = node.layer.name;
+    const hasChildren = node.children.length > 0 || node.objects.length > 0;
+    const toggleIcon = document.createElement('span');
+    toggleIcon.className = 'layer-toggle-icon';
+    toggleIcon.textContent = hasChildren ? (isExpanded ? '▼' : '▶') : '・';
 
-      left.appendChild(toggleIcon);
-      left.appendChild(layerName);
+    const layerName = document.createElement('span');
+    layerName.className = `layer-name ${isEffectivelyVisible ? '' : 'layer-name-hidden'}`;
+    layerName.textContent = node.layer.name;
 
-      // 可視性トグルボタン
-      const visBtn = document.createElement('button');
-      visBtn.className = `layer-visibility-btn ${isVisible ? 'on' : 'off'}`;
-      visBtn.title = isVisible ? 'レイヤーを非表示' : 'レイヤーを表示';
-      visBtn.innerHTML = isVisible
-        ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>'
-        : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m2 2 20 20M9.88 9.88a3 3 0 1 0 4.24 4.24M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path></svg>';
+    left.appendChild(toggleIcon);
+    left.appendChild(layerName);
 
-      visBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.layerManager.setLayerVisibility(node.layer.id, !isVisible);
-      });
+    // 可視性トグルボタン
+    const visBtn = document.createElement('button');
+    visBtn.className = `layer-visibility-btn ${isVisible ? 'on' : 'off'}`;
+    visBtn.title = isVisible ? 'レイヤーを非表示' : 'レイヤーを表示';
+    visBtn.innerHTML = isVisible
+      ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>'
+      : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m2 2 20 20M9.88 9.88a3 3 0 1 0 4.24 4.24M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path></svg>';
 
-      header.appendChild(left);
-      header.appendChild(visBtn);
+    visBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.layerManager.setLayerVisibility(node.layer.id, !isVisible);
+    });
 
-      // 開閉トグル
-      header.addEventListener('click', () => {
-        this.layerManager.toggleLayerExpanded(node.layer.id);
-        this.renderLayerTree();
-      });
+    header.appendChild(left);
+    header.appendChild(visBtn);
 
-      layerItem.appendChild(header);
+    // 開閉トグル
+    header.addEventListener('click', () => {
+      this.layerManager.toggleLayerExpanded(node.layer.id);
+      this.renderLayerTree();
+    });
 
-      // 配下オブジェクト一覧
-      if (isExpanded) {
+    layerItem.appendChild(header);
+
+    // 配下（子レイヤーおよびオブジェクト一覧）
+    if (isExpanded) {
+      const contentContainer = document.createElement('div');
+      contentContainer.className = 'layer-children-container';
+
+      // 1. 子レイヤー（サブフォルダ）
+      for (const childNode of node.children) {
+        contentContainer.appendChild(this.renderLayerNode(childNode));
+      }
+
+      // 2. 当該レイヤーに所属するオブジェクト一覧
+      if (node.objects.length > 0) {
         const objList = document.createElement('div');
         objList.className = 'layer-object-list';
 
@@ -537,6 +560,9 @@ export class ViewerUI {
           const objItem = document.createElement('div');
           objItem.className = 'layer-object-item';
           objItem.dataset.id = obj.id;
+          if (node.depth > 0) {
+            objItem.style.paddingLeft = `calc(32px + ${node.depth * 14}px)`;
+          }
           if (this.layerManager.getSelectedObjectId() === obj.id) {
             objItem.classList.add('selected');
           }
@@ -549,11 +575,13 @@ export class ViewerUI {
           objList.appendChild(objItem);
         }
 
-        layerItem.appendChild(objList);
+        contentContainer.appendChild(objList);
       }
 
-      this.layerTreeContainer.appendChild(layerItem);
+      layerItem.appendChild(contentContainer);
     }
+
+    return layerItem;
   }
 
   private updateSelectedLayerItem(selectedId: string | null): void {

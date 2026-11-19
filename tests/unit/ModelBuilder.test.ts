@@ -83,7 +83,7 @@ describe('ModelBuilder', () => {
     const builder = new ModelBuilder();
     const group = builder.build(data.objects);
 
-    expect(group.children).toHaveLength(1);
+    expect(group.children).toHaveLength(2);
     const mesh = group.children[0] as THREE.Mesh;
     expect(mesh).toBeInstanceOf(THREE.Mesh);
 
@@ -112,9 +112,9 @@ describe('ModelBuilder', () => {
     const bb = geometry.boundingBox!;
     expect(bb.max.x - bb.min.x).toBeCloseTo(0.91, 2);
     expect(bb.max.y - bb.min.y).toBeCloseTo(0.009, 3);
-    expect(bb.max.z - bb.min.z).toBeCloseTo(1.82, 2);
+    expect(bb.max.z - bb.min.z).toBeCloseTo(1.356, 2);
 
-    // 3D空間において「上部(Y最大値側)」がカットされ、「下部(Y最小値側)」が長方形であることの検証
+    // 3D空間において「上部左側(Xマイナス側)」がカットされ、「右上」が高く残っていることの検証
     mesh.updateMatrixWorld();
     const posAttr = geometry.attributes.position;
     const worldVertices: THREE.Vector3[] = [];
@@ -129,12 +129,13 @@ describe('ModelBuilder', () => {
     const bottomMinX = Math.min(...bottomVertices.map(v => v.x));
     const bottomMaxX = Math.max(...bottomVertices.map(v => v.x));
     expect(bottomMinX).toBeCloseTo(-0.455, 2);
-    expect(bottomMaxX).toBeCloseTo(0.455, 2); // 下部は左右両端まである
+    expect(bottomMaxX).toBeCloseTo(0.455, 2);
 
-    // 天面(上部: Y > 1.8m)の頂点群: 右上角がカットされているため、天面(Y≈1.85m)のX最大値は -0.3375m 付近になる
-    const topVertices = worldVertices.filter(v => v.y > 1.84);
-    const topMaxX = Math.max(...topVertices.map(v => v.x));
-    // 右端(0.455)まで達しておらず、0.7925m切り欠かれていること
-    expect(topMaxX).toBeCloseTo(0.455 - 0.7925, 2);
+    // 上部(Y > 1.2m): 右側(X > 0.3)は最高点 1.42m に達し、左側(X = -0.455)はカットされて約 1.22m であること
+    const topVertices = worldVertices.filter(v => v.y > 1.2);
+    const rightTopY = Math.max(...topVertices.filter(v => v.x > 0.3).map(v => v.y));
+    const leftTopY = Math.max(...topVertices.filter(v => v.x < -0.4).map(v => v.y));
+    expect(rightTopY).toBeCloseTo(1.42, 2);
+    expect(leftTopY).toBeCloseTo(1.22, 2);
   });
 });

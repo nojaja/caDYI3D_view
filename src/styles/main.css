@@ -300,6 +300,20 @@ html, body {
   background: #f9fafb;
 }
 
+.layer-item[data-depth]:not([data-depth="0"]) {
+  border: none;
+  border-top: 1px solid #f3f4f6;
+  border-radius: 0;
+  background: transparent;
+}
+
+.layer-children-container {
+  display: flex;
+  flex-direction: column;
+  border-left: 2px solid #e2e8f0;
+  margin-left: 14px;
+}
+
 .layer-item-header {
   display: flex;
   align-items: center;
@@ -326,6 +340,11 @@ html, body {
   font-size: 13px;
   font-weight: 600;
   color: #1f2937;
+}
+
+.layer-name.layer-name-hidden {
+  color: #9ca3af;
+  text-decoration: line-through;
 }
 
 .layer-visibility-btn {

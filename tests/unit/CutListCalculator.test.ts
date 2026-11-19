@@ -147,20 +147,27 @@ describe('CutListCalculator - 材料取り図(木取り図)の計算ロジック
     expect(sheet.layout).toBe('2d');
     expect(sheet.sheetWidthMm).toBeCloseTo(910, 1);
     expect(sheet.sheetLengthMm).toBeCloseTo(1820, 1);
-    expect(sheet.items).toHaveLength(1);
+    expect(sheet.items).toHaveLength(2);
 
-    const item = sheet.items[0];
-    expect(item.object.name).toBe('OSB合板');
-    // 長さ 1820mm, 幅 910mm
-    expect(item.lengthMm).toBeCloseTo(1820, 1);
-    expect(item.widthMm).toBeCloseTo(910, 1);
-    expect(item.isBoard).toBe(true);
+    const item1 = sheet.items[0];
+    expect(item1.object.name).toBe('OSB合板');
+    // 1枚目: 長さ 1356mm, 幅 910mm
+    expect(item1.lengthMm).toBeCloseTo(1356, 1);
+    expect(item1.widthMm).toBeCloseTo(910, 1);
+    expect(item1.isBoard).toBe(true);
 
     // 形状加工情報 (edgeCuts) が保持されていること
-    expect((item.object as any).edgeCuts).toBeDefined();
-    expect((item.object as any).edgeCuts[0].edgeIndex).toBe(7);
-    expect((item.object as any).edgeCuts[0].faceADist).toBe(0.7925);
-    expect((item.object as any).edgeCuts[0].faceBDist).toBe(0.1985);
+    expect((item1.object as any).edgeCuts).toBeDefined();
+    expect((item1.object as any).edgeCuts[0].edgeIndex).toBe(7);
+    expect((item1.object as any).edgeCuts[0].faceADist).toBe(0.7925);
+    expect((item1.object as any).edgeCuts[0].faceBDist).toBe(0.1985);
+
+    const item2 = sheet.items[1];
+    expect(item2.object.name).toBe('OSB合板');
+    // 2枚目: 長さ 212mm, 幅 910mm
+    expect(item2.lengthMm).toBeCloseTo(212, 1);
+    expect(item2.widthMm).toBeCloseTo(910, 1);
+    expect(item2.positionMm.z).toBeCloseTo(1359, 1);
   });
 
   it('testdata/001.cadiy4 の材料取り図で各材料規格ごとに独立した素材シートが生成され、サイズ感が合っていること', () => {

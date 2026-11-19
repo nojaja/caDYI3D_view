@@ -1,29 +1,48 @@
 import * as THREE from 'three';
-import { CadiyObject, LumberObject, BoardObject, CylinderObject, DimensionObject, TextBoardObject } from '../types/cadiy4';
+import { CadiyObject, LumberObject, BoardObject, CylinderObject, DimensionObject, TextBoardObject, PictureObject, PictureImageItem } from '../types/cadiy4';
 import { MaterialFactory } from './MaterialFactory';
 import { TextBoardBuilder } from './TextBoardBuilder';
 import { DimensionBuilder } from './DimensionBuilder';
+import { PictureBuilder } from './PictureBuilder';
 
 export class ModelBuilder {
   private materialFactory: MaterialFactory;
   private textBoardBuilder: TextBoardBuilder;
   private dimensionBuilder: DimensionBuilder;
+  private pictureBuilder: PictureBuilder;
 
   constructor(materialFactory?: MaterialFactory) {
     this.materialFactory = materialFactory || new MaterialFactory();
     this.textBoardBuilder = new TextBoardBuilder();
     this.dimensionBuilder = new DimensionBuilder();
+    this.pictureBuilder = new PictureBuilder();
+  }
+
+  /**
+   * 画像テーブルをセットする
+   */
+  public setPictureImageTable(table?: PictureImageItem[]): void {
+    this.pictureBuilder.setImageTable(table);
   }
 
   /**
    * オブジェクトリストからThree.jsのGroupを生成する
    */
-  public build(objects: CadiyObject[]): THREE.Group {
+  public build(
+    objects: CadiyObject[],
+    isObjectVisible?: (objectId: string) => boolean,
+    pictureImageTable?: PictureImageItem[]
+  ): THREE.Group {
+    if (pictureImageTable) {
+      this.setPictureImageTable(pictureImageTable);
+    }
+
     const rootGroup = new THREE.Group();
     rootGroup.name = 'cadiy-model-root';
 
     for (const obj of objects) {
-      const mesh = this.createObjectMesh(obj);
+      const visible = isObjectVisible ? isObjectVisible(obj.id) : obj.visible !== false;
+      const mesh = this.createObjectMesh(obj, visible);
       if (mesh) {
         rootGroup.add(mesh);
       }
@@ -35,13 +54,31 @@ export class ModelBuilder {
   /**
    * 単一オブジェクトからMeshまたはObject3Dを生成
    */
-  public createObjectMesh(obj: CadiyObject): THREE.Object3D | null {
+  public createObjectMesh(obj: CadiyObject, isVisible?: boolean): THREE.Object3D | null {
+    const finalVisible = isVisible !== undefined ? isVisible : obj.visible !== false;
+
     if (obj.type === 'textBoard') {
-      return this.textBoardBuilder.build(obj as TextBoardObject);
+      const textMesh = this.textBoardBuilder.build(obj as TextBoardObject);
+      if (textMesh) {
+        textMesh.visible = finalVisible;
+      }
+      return textMesh;
     }
 
     if (obj.type === 'dimension') {
-      return this.dimensionBuilder.build(obj as DimensionObject);
+      const dimMesh = this.dimensionBuilder.build(obj as DimensionObject);
+      if (dimMesh) {
+        dimMesh.visible = finalVisible;
+      }
+      return dimMesh;
+    }
+
+    if (obj.type === 'picture') {
+      const picMesh = this.pictureBuilder.build(obj as PictureObject);
+      if (picMesh) {
+        picMesh.visible = finalVisible;
+      }
+      return picMesh;
     }
 
     let geometry: THREE.BufferGeometry | null = null;
@@ -68,7 +105,7 @@ export class ModelBuilder {
     mesh.name = obj.partName || obj.name;
     mesh.position.set(obj.position.x, obj.position.y, obj.position.z);
     mesh.quaternion.set(obj.quaternion.x, obj.quaternion.y, obj.quaternion.z, obj.quaternion.w);
-    mesh.visible = obj.visible !== false;
+    mesh.visible = finalVisible;
     mesh.castShadow = true;
     mesh.receiveShadow = true;
 
@@ -137,18 +174,18 @@ export class ModelBuilder {
       polygon2D.push({ x: hx, z: hz });
     }
 
-    // 3. 右上 (X+, Z-): Edge 7 (上部右側コーナー)
-    if (cutMap.has(7)) {
-      const c = cutMap.get(7)!;
+    // 3. 右上 (X+, Z-): Edge 6
+    if (cutMap.has(6)) {
+      const c = cutMap.get(6)!;
       polygon2D.push({ x: hx, z: -hz + c.faceBDist });
       polygon2D.push({ x: hx - c.faceADist, z: -hz });
     } else {
       polygon2D.push({ x: hx, z: -hz });
     }
 
-    // 4. 左上 (X-, Z-): Edge 6 (上部左側コーナー)
-    if (cutMap.has(6)) {
-      const c = cutMap.get(6)!;
+    // 4. 左上 (X-, Z-): Edge 7
+    if (cutMap.has(7)) {
+      const c = cutMap.get(7)!;
       polygon2D.push({ x: -hx + c.faceADist, z: -hz });
       polygon2D.push({ x: -hx, z: -hz + c.faceBDist });
     } else {
@@ -216,5 +253,6 @@ export class ModelBuilder {
 
   public dispose(): void {
     this.materialFactory.dispose();
+    this.pictureBuilder.dispose();
   }
 }

@@ -118,7 +118,7 @@ export class Viewer {
   /**
    * cadiy4 データをロードしてシーンに配置する
    */
-  public loadModel(data: Cadiy4Data): void {
+  public loadModel(data: Cadiy4Data, isObjectVisible?: (objectId: string) => boolean): void {
     // 既存モデルの破棄
     if (this.currentModelGroup) {
       this.scene.remove(this.currentModelGroup);
@@ -127,7 +127,7 @@ export class Viewer {
     }
 
     // 新モデルの構築
-    this.currentModelGroup = this.modelBuilder.build(data.objects);
+    this.currentModelGroup = this.modelBuilder.build(data.objects, isObjectVisible, data.pictureImageTable);
     this.scene.add(this.currentModelGroup);
 
     // カメラ同期
@@ -155,8 +155,10 @@ export class Viewer {
     const frustum = this.orthoViewManager.calculateFrustum(box, 1.0);
     this.orthoViewManager.createCameras(center, 1.5, frustum);
 
-    // グローバル完了フラグ（E2E自動テスト判定用）
+    // グローバル完了フラグ・参照（E2E自動テスト判定用）
     (window as any).__VIEWER_READY__ = true;
+    (window as any).__VIEWER__ = this;
+    (window as any).__MODEL_GROUP__ = this.currentModelGroup;
   }
 
   /**
@@ -177,6 +179,20 @@ export class Viewer {
     const current = this.orthoViewManager.getZoom();
     const newZoom = Math.max(0.2, Math.min(10.0, current * deltaFactor));
     this.orthoViewManager.setZoom(newZoom);
+  }
+
+  /**
+   * 全オブジェクトの可視性を判定関数に基づいて一括同期する
+   */
+  public syncVisibility(isObjectVisible: (objectId: string) => boolean): void {
+    if (!this.currentModelGroup) return;
+
+    this.currentModelGroup.traverse((child) => {
+      const obj = child.userData?.cadiyObject as CadiyObject | undefined;
+      if (obj) {
+        child.visible = isObjectVisible(obj.id);
+      }
+    });
   }
 
   /**
