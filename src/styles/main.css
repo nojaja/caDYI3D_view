@@ -556,16 +556,59 @@ html, body {
   display: flex;
 }
 
+.cutplan-board-canvas-2d {
+  position: relative;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cutplan-svg-canvas {
+  width: 100%;
+  height: auto;
+  max-height: 400px;
+  display: block;
+}
+
 .cutplan-part-block {
   position: relative;
   height: 100%;
   background: #fde68a;
-  border-right: 2px dashed #b45309;
+  border-right: 1px solid #d97706;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0 4px;
   box-sizing: border-box;
+}
+
+.cutplan-kerf-line {
+  position: relative;
+  width: 14px;
+  min-width: 14px;
+  height: 100%;
+  background: #fee2e2;
+  border-left: 1.5px dashed #dc2626;
+  border-right: 1.5px dashed #dc2626;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+  z-index: 2;
+  box-sizing: border-box;
+}
+
+.cutplan-kerf-mark {
+  font-size: 10px;
+  color: #dc2626;
+  font-weight: bold;
+  user-select: none;
 }
 
 .cutplan-part-label {
@@ -579,7 +622,6 @@ html, body {
 }
 
 .cutplan-remaining-block {
-  flex: 1;
   height: 100%;
   background: repeating-linear-gradient(
     45deg,
@@ -588,12 +630,14 @@ html, body {
     #e5e7eb 10px,
     #e5e7eb 20px
   );
+  border-left: 1.5px solid #cbd5e1;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 11px;
-  color: #9ca3af;
+  color: #64748b;
   font-weight: 600;
+  box-sizing: border-box;
 }
 
 /* 三面図 (Orthographic 3-View) モード */

@@ -60,6 +60,14 @@ export interface SourceMaterial {
   textureId?: number;
 }
 
+export interface EdgeCut {
+  edgeIndex: number;
+  mode: 'cut' | 'round' | string;
+  faceADist: number;
+  faceBDist: number;
+  radius?: number;
+}
+
 export type ObjectType =
   | 'lumber'
   | 'board'
@@ -97,11 +105,14 @@ export interface CadiyObjectBase {
   rotationDeg?: Vector3;
   worldBounds?: BoundingBox3D;
   noAggregated?: boolean;
+  standardRef?: StandardRef;
+  edgeCuts?: EdgeCut[];
 }
 
 export interface LumberObject extends CadiyObjectBase {
   type: 'lumber';
   cutAngles?: number[];
+  edgeCuts?: EdgeCut[];
   standardRef?: StandardRef;
   unitPrice?: number;
   specificGravity?: number;
@@ -111,6 +122,7 @@ export interface LumberObject extends CadiyObjectBase {
 export interface BoardObject extends CadiyObjectBase {
   type: 'board';
   cutAngles?: number[];
+  edgeCuts?: EdgeCut[];
   standardRef?: StandardRef;
   unitPrice?: number;
   specificGravity?: number;

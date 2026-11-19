@@ -93,4 +93,30 @@ describe('formatObjectProperties - オブジェクトプロパティ計算・フ
     expect(props.weightKg).toBeGreaterThan(0);
     expect(props.processingInfo).toBe('なし');
   });
+
+  it('edgeCuts が設定されている場合に形状加工情報としてフォーマットされること', () => {
+    const boardWithEdgeCut: BoardObject = {
+      id: 'board-edgecut',
+      name: 'OSB合板',
+      type: 'board',
+      position: { x: 0, y: 0, z: 0 },
+      size: { x: 0.91, y: 0.009, z: 1.82 },
+      quaternion: { x: 0, y: 0, z: 0, w: 1 },
+      visible: true,
+      color: { r: 0.85, g: 0.7, b: 0.45 },
+      edgeCuts: [
+        {
+          edgeIndex: 7,
+          mode: 'cut',
+          faceADist: 0.7925,
+          faceBDist: 0.1985,
+        },
+      ],
+    };
+
+    const props = formatObjectProperties(boardWithEdgeCut);
+    expect(props.processingInfo).toContain('エッジ加工');
+    expect(props.processingInfo).toContain('792.5');
+    expect(props.processingInfo).toContain('198.5');
+  });
 });

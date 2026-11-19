@@ -73,4 +73,68 @@ describe('ModelBuilder', () => {
     const mesh = group.children[0] as THREE.Mesh;
     expect(mesh.visible).toBe(false);
   });
+
+  it('testdata/002.cadiy4 の形状加工(edgeCuts)付き合板を正確な形状ジオメトリとして構築できること', () => {
+    const filePath = path.resolve(__dirname, '../../testdata/002.cadiy4');
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const parser = new Cadiy4Parser();
+    const data = parser.parse(content);
+
+    const builder = new ModelBuilder();
+    const group = builder.build(data.objects);
+
+    expect(group.children).toHaveLength(1);
+    const mesh = group.children[0] as THREE.Mesh;
+    expect(mesh).toBeInstanceOf(THREE.Mesh);
+
+    const obj = data.objects[0];
+    expect(obj.type).toBe('board');
+    expect((obj as any).edgeCuts).toHaveLength(1);
+    expect((obj as any).edgeCuts[0]).toEqual({
+      edgeIndex: 7,
+      mode: 'cut',
+      faceADist: 0.7925,
+      faceBDist: 0.1985,
+    });
+
+    // edgeCuts が適用されたジオメトリの検証
+    // 単なる 8 頂点の直方体 (BoxGeometry: 6面) ではなく、斜めカット面が加わったジオメトリであること
+    const geometry = mesh.geometry;
+    expect(geometry).toBeDefined();
+
+    // BoxGeometry のデフォルトの index 数 (36 = 12三角形) ではない、または頂点構造がカットされていること
+    // カットにより面数・頂点数が増加している
+    const indexCount = geometry.index ? geometry.index.count : geometry.attributes.position.count;
+    expect(indexCount).toBeGreaterThan(36);
+
+    // ジオメトリの境界ボックス検証
+    geometry.computeBoundingBox();
+    const bb = geometry.boundingBox!;
+    expect(bb.max.x - bb.min.x).toBeCloseTo(0.91, 2);
+    expect(bb.max.y - bb.min.y).toBeCloseTo(0.009, 3);
+    expect(bb.max.z - bb.min.z).toBeCloseTo(1.82, 2);
+
+    // 3D空間において「上部(Y最大値側)」がカットされ、「下部(Y最小値側)」が長方形であることの検証
+    mesh.updateMatrixWorld();
+    const posAttr = geometry.attributes.position;
+    const worldVertices: THREE.Vector3[] = [];
+    for (let i = 0; i < posAttr.count; i++) {
+      const v = new THREE.Vector3().fromBufferAttribute(posAttr, i);
+      v.applyMatrix4(mesh.matrixWorld);
+      worldVertices.push(v);
+    }
+
+    // 床面(下部: Y < 0.1m)の頂点群: 全幅 910mm (-0.455 ~ +0.455) が存在すること
+    const bottomVertices = worldVertices.filter(v => v.y < 0.1);
+    const bottomMinX = Math.min(...bottomVertices.map(v => v.x));
+    const bottomMaxX = Math.max(...bottomVertices.map(v => v.x));
+    expect(bottomMinX).toBeCloseTo(-0.455, 2);
+    expect(bottomMaxX).toBeCloseTo(0.455, 2); // 下部は左右両端まである
+
+    // 天面(上部: Y > 1.8m)の頂点群: 右上角がカットされているため、天面(Y≈1.85m)のX最大値は -0.3375m 付近になる
+    const topVertices = worldVertices.filter(v => v.y > 1.84);
+    const topMaxX = Math.max(...topVertices.map(v => v.x));
+    // 右端(0.455)まで達しておらず、0.7925m切り欠かれていること
+    expect(topMaxX).toBeCloseTo(0.455 - 0.7925, 2);
+  });
 });

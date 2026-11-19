@@ -4,7 +4,7 @@ import { CadiyObject, Cadiy4Data } from '../types/cadiy4';
 import { ViewModeManager, ViewMode } from '../core/ViewModeManager';
 import { LayerManager } from '../core/LayerManager';
 import { formatObjectProperties } from '../utils/propertyFormatter';
-import { CutListCalculator } from '../core/CutListCalculator';
+import { CutListCalculator, CutPlanSheet } from '../core/CutListCalculator';
 
 export class ViewerUI {
   private viewer: Viewer;
@@ -199,46 +199,190 @@ export class ViewerUI {
     }
 
     for (const sheet of sheets) {
-      const sheetEl = document.createElement('div');
-      sheetEl.className = 'cutplan-sheet';
+      if (sheet.layout === '2d') {
+        const sheetEl = this.render2DSheet(sheet);
+        this.cutlistSheetsContainer.appendChild(sheetEl);
+      } else {
+        const sheetEl = this.render1DSheet(sheet);
+        this.cutlistSheetsContainer.appendChild(sheetEl);
+      }
+    }
+  }
 
-      const header = document.createElement('div');
-      header.className = 'cutplan-sheet-header';
-      header.innerHTML = `
-        <span><strong>材料 #${sheet.baseId + 1}</strong> (${sheet.lumberName || '角材'})</span>
-        <span>使用長: ${sheet.usedLengthMm.toFixed(0)}mm / 端材: ${sheet.remainingLengthMm.toFixed(0)}mm (歩留まり: ${sheet.yieldRatePercent.toFixed(1)}%)</span>
+  /**
+   * 2D 板材・合板シートの材料取り図レンダリング
+   */
+  private render2DSheet(sheet: CutPlanSheet): HTMLElement {
+    const sheetEl = document.createElement('div');
+    sheetEl.className = 'cutplan-sheet cutplan-sheet-2d';
+
+    const header = document.createElement('div');
+    header.className = 'cutplan-sheet-header';
+    header.innerHTML = `
+      <span><strong>材料 #${sheet.baseId + 1}</strong> (${sheet.lumberName || '合板'}) - 原板: ${sheet.sheetWidthMm} × ${sheet.sheetLengthMm} mm</span>
+      <span>使用: ${sheet.sheetWidthMm} × ${sheet.usedLengthMm.toFixed(0)} mm / 端材: ${sheet.remainingLengthMm.toFixed(0)} mm (歩留まり: ${sheet.yieldRatePercent.toFixed(1)}%)</span>
+    `;
+
+    const canvas = document.createElement('div');
+    canvas.className = 'cutplan-board-canvas-2d';
+
+    const svgWidth = sheet.sheetLengthMm;
+    const svgHeight = sheet.sheetWidthMm;
+
+    let svgInner = '';
+
+    // 定義 (パターン等)
+    svgInner += `
+      <defs>
+        <pattern id="scrap-hatch-${sheet.baseId}" width="20" height="20" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+          <line x1="0" y1="0" x2="0" y2="20" stroke="#cbd5e1" stroke-width="3" />
+        </pattern>
+      </defs>
+    `;
+
+    // 原板枠（背景・端材下地）
+    svgInner += `<rect x="0" y="0" width="${svgWidth}" height="${svgHeight}" fill="url(#scrap-hatch-${sheet.baseId})" stroke="#94a3b8" stroke-width="2" rx="4" />`;
+
+    // 端材ラベル（右側または余白）
+    if (sheet.remainingLengthMm > 50) {
+      svgInner += `
+        <text x="${svgWidth - 20}" y="${svgHeight / 2}" font-size="28" font-weight="600" fill="#94a3b8" text-anchor="end" dominant-baseline="middle">
+          端材領域 (残 ${sheet.remainingLengthMm.toFixed(0)}mm)
+        </text>
+      `;
+    }
+
+    for (const item of sheet.items) {
+      const px = item.positionMm.z;
+      const py = item.positionMm.x;
+      const pw = item.lengthMm;
+      const ph = item.widthMm;
+
+      const edgeCuts = item.edgeCuts || [];
+      const cut7 = edgeCuts.find((c: any) => c.edgeIndex === 7);
+
+      // パーツ切り出し用の木取り線（切断線: のこ刃切り代付き）
+      // 縦の切断線 (パーツ右端)
+      svgInner += `
+        <line x1="${px + pw}" y1="0" x2="${px + pw}" y2="${svgHeight}" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2" stroke-dasharray="6,4" />
+        <text x="${px + pw + 6}" y="24" font-size="18" font-weight="bold" fill="#dc2626">✂ 木取り線 (${sheet.cutWidthMm}mm)</text>
       `;
 
-      const canvas = document.createElement('div');
-      canvas.className = 'cutplan-board-canvas';
+      if (cut7) {
+        // 斜めカットあり (Corner 7)
+        const cutA = cut7.faceADist * 1000;
+        const cutB = cut7.faceBDist * 1000;
 
-      const totalLen = sheet.usedLengthMm + sheet.remainingLengthMm;
+        const polyPoints = [
+          `${px},${py}`,
+          `${px + pw - cutB},${py}`,
+          `${px + pw},${py + cutA}`,
+          `${px + pw},${py + ph}`,
+          `${px},${py + ph}`,
+        ].join(' ');
 
-      for (const item of sheet.items) {
-        const block = document.createElement('div');
-        block.className = 'cutplan-part-block';
-        const widthPct = (item.lengthMm / totalLen) * 100;
-        block.style.width = `${Math.max(widthPct, 4)}%`;
+        const scrapPoints = [
+          `${px + pw - cutB},${py}`,
+          `${px + pw},${py}`,
+          `${px + pw},${py + cutA}`,
+        ].join(' ');
 
-        const label = document.createElement('div');
-        label.className = 'cutplan-part-label';
-        label.textContent = `${item.object.partName || item.object.name} (${item.lengthMm.toFixed(0)}mm)`;
-        block.appendChild(label);
-
-        canvas.appendChild(block);
+        // 切り落とし端材部分
+        svgInner += `<polygon points="${scrapPoints}" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,4" />`;
+        // 残存パーツ本体
+        svgInner += `<polygon points="${polyPoints}" class="cutplan-part-block" fill="#fde68a" stroke="#d97706" stroke-width="2" />`;
+        // 切断指示線 (斜め木取り線)
+        svgInner += `<line x1="${px + pw - cutB}" y1="${py}" x2="${px + pw}" y2="${py + cutA}" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2.5" />`;
+        // 切断寸法テキスト
+        const midX = px + pw - cutB / 2;
+        const midY = py + cutA / 2;
+        svgInner += `<text x="${midX}" y="${Math.max(py + 32, midY - 12)}" font-size="28" font-weight="bold" fill="#b91c1c" text-anchor="middle">✂ 斜めカット: ${cutA.toFixed(1)} × ${cutB.toFixed(1)}mm</text>`;
+      } else {
+        // 通常の長方形パーツ
+        svgInner += `<rect x="${px}" y="${py}" width="${pw}" height="${ph}" class="cutplan-part-block" fill="#fde68a" stroke="#d97706" stroke-width="2" rx="2" />`;
       }
 
-      if (sheet.remainingLengthMm > 0) {
-        const remaining = document.createElement('div');
-        remaining.className = 'cutplan-remaining-block';
-        remaining.textContent = `端材 (${sheet.remainingLengthMm.toFixed(0)}mm)`;
-        canvas.appendChild(remaining);
-      }
-
-      sheetEl.appendChild(header);
-      sheetEl.appendChild(canvas);
-      this.cutlistSheetsContainer.appendChild(sheetEl);
+      // パーツ名・寸法ラベル (幅 × 長さを明記)
+      const labelX = px + pw / 2;
+      const labelY = py + ph / 2;
+      const partTitle = item.object.partName || item.object.name;
+      svgInner += `
+        <text x="${labelX}" y="${labelY - 14}" class="cutplan-part-label" font-size="34" font-weight="bold" fill="#92400e" text-anchor="middle">${partTitle}</text>
+        <text x="${labelX}" y="${labelY + 28}" class="cutplan-part-dimensions" font-size="28" font-weight="600" fill="#78350f" text-anchor="middle">寸法: ${item.widthMm.toFixed(0)} × ${item.lengthMm.toFixed(0)} mm</text>
+      `;
     }
+
+    const svgHtml = `
+      <svg viewBox="0 0 ${svgWidth} ${svgHeight}" class="cutplan-svg-canvas" preserveAspectRatio="xMidYMid meet">
+        ${svgInner}
+      </svg>
+    `;
+
+    canvas.innerHTML = svgHtml;
+    sheetEl.appendChild(header);
+    sheetEl.appendChild(canvas);
+    return sheetEl;
+  }
+
+  /**
+   * 1D 角材シートの材料取り図レンダリング
+   */
+  private render1DSheet(sheet: CutPlanSheet): HTMLElement {
+    const sheetEl = document.createElement('div');
+    sheetEl.className = 'cutplan-sheet cutplan-sheet-1d';
+
+    const totalLen = sheet.sheetLengthMm > 0
+      ? sheet.sheetLengthMm
+      : Math.max(sheet.usedLengthMm + sheet.remainingLengthMm, 1);
+
+    const header = document.createElement('div');
+    header.className = 'cutplan-sheet-header';
+    header.innerHTML = `
+      <span><strong>材料 #${sheet.baseId + 1}</strong> (${sheet.lumberName || '角材'}) - 原木長: ${totalLen.toFixed(0)}mm</span>
+      <span>使用長: ${sheet.usedLengthMm.toFixed(0)}mm / 端材: ${sheet.remainingLengthMm.toFixed(0)}mm (歩留まり: ${sheet.yieldRatePercent.toFixed(1)}%)</span>
+    `;
+
+    const canvas = document.createElement('div');
+    canvas.className = 'cutplan-board-canvas';
+
+    for (let i = 0; i < sheet.items.length; i++) {
+      const item = sheet.items[i];
+      const block = document.createElement('div');
+      block.className = 'cutplan-part-block';
+      const widthPct = (item.lengthMm / totalLen) * 100;
+      block.style.width = `${Math.max(widthPct, 2)}%`;
+
+      const label = document.createElement('div');
+      label.className = 'cutplan-part-label';
+      label.textContent = `${item.object.partName || item.object.name} (${item.lengthMm.toFixed(0)}mm)`;
+      block.appendChild(label);
+
+      canvas.appendChild(block);
+
+      // パーツ同士の境界、または端材との境界に木取り線（のこ刃切り代）を表示
+      const isLast = i === sheet.items.length - 1;
+      if (!isLast || sheet.remainingLengthMm > 0) {
+        const kerf = document.createElement('div');
+        kerf.className = 'cutplan-kerf-line';
+        kerf.title = `木取り線 (切り代: ${sheet.cutWidthMm}mm)`;
+        kerf.innerHTML = '<span class="cutplan-kerf-mark">✂</span>';
+        canvas.appendChild(kerf);
+      }
+    }
+
+    if (sheet.remainingLengthMm > 0) {
+      const remaining = document.createElement('div');
+      remaining.className = 'cutplan-remaining-block';
+      const remPct = (sheet.remainingLengthMm / totalLen) * 100;
+      remaining.style.width = `${Math.max(remPct, 2)}%`;
+      remaining.style.flex = 'none';
+      remaining.textContent = `端材 (${sheet.remainingLengthMm.toFixed(0)}mm)`;
+      canvas.appendChild(remaining);
+    }
+
+    sheetEl.appendChild(header);
+    sheetEl.appendChild(canvas);
+    return sheetEl;
   }
 
   private updateModeButtons(activeMode: ViewMode): void {

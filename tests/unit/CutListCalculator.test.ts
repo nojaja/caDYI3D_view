@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import * as fs from 'fs';
+import * as path from 'path';
 import { CutListCalculator, CutPlanSheet } from '../../src/core/CutListCalculator';
 import { CutListData, CadiyObject } from '../../src/types/cadiy4';
+import { Cadiy4Parser } from '../../src/loader/Cadiy4Parser';
 
 describe('CutListCalculator - 材料取り図(木取り図)の計算ロジック', () => {
   const dummyCutList: CutListData = {
@@ -126,5 +129,128 @@ describe('CutListCalculator - 材料取り図(木取り図)の計算ロジック
 
     const sheetsEmpty = calculator.calculate({ cutWidthMm: 3, packingMode: 'adjacent', layouts: [] }, dummyObjects);
     expect(sheetsEmpty).toEqual([]);
+  });
+
+  it('testdata/002.cadiy4 の合板(2D材料)および形状加工(edgeCuts)を材料取り図に正しく反映できること', () => {
+    const filePath = path.resolve(__dirname, '../../testdata/002.cadiy4');
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const parser = new Cadiy4Parser();
+    const data = parser.parse(content);
+
+    const calculator = new CutListCalculator();
+    const sheets = calculator.calculate(data.cutList, data.objects);
+
+    expect(sheets).toHaveLength(1);
+    const sheet = sheets[0];
+    expect(sheet.baseId).toBe(0);
+    expect(sheet.lumberName).toBe('OSB合板');
+    expect(sheet.layout).toBe('2d');
+    expect(sheet.sheetWidthMm).toBeCloseTo(910, 1);
+    expect(sheet.sheetLengthMm).toBeCloseTo(1820, 1);
+    expect(sheet.items).toHaveLength(1);
+
+    const item = sheet.items[0];
+    expect(item.object.name).toBe('OSB合板');
+    // 長さ 1820mm, 幅 910mm
+    expect(item.lengthMm).toBeCloseTo(1820, 1);
+    expect(item.widthMm).toBeCloseTo(910, 1);
+    expect(item.isBoard).toBe(true);
+
+    // 形状加工情報 (edgeCuts) が保持されていること
+    expect((item.object as any).edgeCuts).toBeDefined();
+    expect((item.object as any).edgeCuts[0].edgeIndex).toBe(7);
+    expect((item.object as any).edgeCuts[0].faceADist).toBe(0.7925);
+    expect((item.object as any).edgeCuts[0].faceBDist).toBe(0.1985);
+  });
+
+  it('testdata/001.cadiy4 の材料取り図で各材料規格ごとに独立した素材シートが生成され、サイズ感が合っていること', () => {
+    const filePath = path.resolve(__dirname, '../../testdata/001.cadiy4');
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const parser = new Cadiy4Parser();
+    const data = parser.parse(content);
+
+    const calculator = new CutListCalculator();
+    const sheets = calculator.calculate(data.cutList, data.objects);
+
+    // 001.cadiy4 には SPF 2x2材, SPF 1x3材, 板材(天板), 円柱, 丸棒 の5種類の素材が存在する
+    expect(sheets).toHaveLength(5);
+
+    // 角材シートの検証 (SPF 2x2材)
+    const spf2x2Sheet = sheets.find(s => (s.lumberName || '').includes('2x2'));
+    expect(spf2x2Sheet).toBeDefined();
+    expect(spf2x2Sheet!.layout).toBe('1d');
+    expect(spf2x2Sheet!.items).toHaveLength(4); // 脚4本
+    expect(spf2x2Sheet!.sheetLengthMm).toBe(1820); // 6F規格
+    expect(spf2x2Sheet!.sheetWidthMm).toBe(38); // 断面幅 38mm
+
+    // 角材シートの検証 (SPF 1x3材)
+    const spf1x3Sheet = sheets.find(s => (s.lumberName || '').includes('1x3'));
+    expect(spf1x3Sheet).toBeDefined();
+    expect(spf1x3Sheet!.layout).toBe('1d');
+    expect(spf1x3Sheet!.items).toHaveLength(4); // 幕板4本
+    expect(spf1x3Sheet!.sheetLengthMm).toBe(1820); // 6F規格
+    expect(spf1x3Sheet!.sheetWidthMm).toBe(64); // 断面幅 64mm
+
+    // 板材シートの検証 (天板)
+    const boardSheet = sheets.find(s => (s.lumberName || '').includes('板材') || s.items.some(i => i.object.name === '板材'));
+    expect(boardSheet).toBeDefined();
+    expect(boardSheet!.layout).toBe('2d');
+    expect(boardSheet!.items).toHaveLength(1);
+    expect(boardSheet!.items[0].lengthMm).toBe(600);
+    expect(boardSheet!.items[0].widthMm).toBe(400);
+    expect(boardSheet!.sheetLengthMm).toBe(600);
+    expect(boardSheet!.sheetWidthMm).toBe(400);
+  });
+
+  it('testdata/003.cadiy4 の材料取り図で全部で20個の素材シートが生成され、各原木・原板のサイズが合っていること', () => {
+    const filePath = path.resolve(__dirname, '../../testdata/003.cadiy4');
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const parser = new Cadiy4Parser();
+    const data = parser.parse(content);
+
+    const calculator = new CutListCalculator();
+    const sheets = calculator.calculate(data.cutList, data.objects);
+
+    // 全部で20個の素材が表示されること
+    expect(sheets).toHaveLength(20);
+
+    // 内訳検証:
+    // SPF 2x2材: 5本 (1820mm, 38mm)
+    const spf2x2Sheets = sheets.filter(s => (s.lumberName || '').includes('2x2'));
+    expect(spf2x2Sheets).toHaveLength(5);
+    for (const s of spf2x2Sheets) {
+      expect(s.layout).toBe('1d');
+      expect(s.sheetLengthMm).toBe(1820);
+      expect(s.sheetWidthMm).toBe(38);
+    }
+
+    // SPF 2x4材: 5本 (1820mm, 89mm)
+    const spf2x4Sheets = sheets.filter(s => (s.lumberName || '').includes('2x4'));
+    expect(spf2x4Sheets).toHaveLength(5);
+    for (const s of spf2x4Sheets) {
+      expect(s.layout).toBe('1d');
+      expect(s.sheetLengthMm).toBe(1820);
+      expect(s.sheetWidthMm).toBe(89);
+    }
+
+    // パイン集成材 (600x1820): 1枚
+    const pineSheets = sheets.filter(s => (s.lumberName || '').includes('パイン集成材'));
+    expect(pineSheets).toHaveLength(1);
+    expect(pineSheets[0].layout).toBe('2d');
+    expect(pineSheets[0].sheetWidthMm).toBe(600);
+    expect(pineSheets[0].sheetLengthMm).toBe(1820);
+
+    // 針葉樹構造用合板 (910x1820): 3枚
+    const plywoodSheets = sheets.filter(s => (s.lumberName || '').includes('構造用合板') || (s.lumberName || '').includes('針葉樹'));
+    expect(plywoodSheets).toHaveLength(3);
+    for (const s of plywoodSheets) {
+      expect(s.layout).toBe('2d');
+      expect(s.sheetWidthMm).toBe(910);
+      expect(s.sheetLengthMm).toBe(1820);
+    }
+
+    // アジャスター (円柱): 6個
+    const adjusterSheets = sheets.filter(s => (s.lumberName || '').includes('円柱') || s.items.some(i => (i.object.partName || '').includes('アジャスター')));
+    expect(adjusterSheets).toHaveLength(6);
   });
 });

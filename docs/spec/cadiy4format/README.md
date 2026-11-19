@@ -91,11 +91,30 @@
 #### 1. `lumber` (角材) / `board` (板材)
 木工の基本材料です。木取り図（Cut Plan）の計算対象になります。
 - `cutAngles`: 8要素の配列 `[0, 0, 0, 0, 0, 0, 0, 0]`（端部の斜めカット角度 [deg]）。
+- `edgeCuts`: 形状加工（角の斜めカット・面取り・R加工）の定義配列（後述）。
 - `standardRef`: 材料規格参照オブジェクト（`setId`, `standardId`, `name`, `snapshotAt`）。
 - `unitPrice`: 原木単価（円）。
 - `specificGravity`: 比重（SPF材は約 `0.4`）。
 - `remarks`: 規格備考（例: `"38×38×1820mm (6F)"`）。
 - `legacyStandardSize`: 旧バージョン規格寸法 (`Vector3`)。
+
+##### 形状加工 (`edgeCuts[*]`) 仕様
+角材・合板のエッジ（辺）に対して適用される斜めカット（面取り）およびコーナーR加工のパラメータです。
+```json
+{
+  "edgeIndex": 7,
+  "mode": "cut",
+  "faceADist": 0.7925,
+  "faceBDist": 0.1985
+}
+```
+| フィールド名 | 型 | 説明 |
+| :--- | :--- | :--- |
+| `edgeIndex` | `integer` | 加工対象となるバウンディングボックスの辺番号（`0` 〜 `11`）。 |
+| `mode` | `string` | 加工モード。`"cut"`（直線斜めカット/面取り）または `"round"`（R面取り/フィレット）。 |
+| `faceADist` | `number` | エッジに隣接する面A方向に沿った切り落とし距離 [m]。 |
+| `faceBDist` | `number` | エッジに隣接する面B方向に沿った切り落とし距離 [m]。 |
+| `radius` | `number` | オプション。R面取り（フィレット）時の曲率半径 [m]。 |
 
 #### 2. `cylinder` (円柱・丸棒) / `roundBoard` (円形板)
 丸棒や丸板の材料です。

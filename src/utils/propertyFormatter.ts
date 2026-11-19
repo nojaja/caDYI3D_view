@@ -57,11 +57,21 @@ export function formatObjectProperties(object: CadiyObject): FormattedObjectProp
   };
 
   // 形状加工情報 (cutAngles 等)
-  let processingInfo = 'なし';
+  const processingParts: string[] = [];
   if (Array.isArray(anyObj.cutAngles) && anyObj.cutAngles.some((a: number) => a !== 0)) {
     const activeAngles = anyObj.cutAngles.filter((a: number) => a !== 0);
-    processingInfo = `斜めカット (${activeAngles.map((a: number) => `${a}°`).join(', ')})`;
+    processingParts.push(`斜めカット (${activeAngles.map((a: number) => `${a}°`).join(', ')})`);
   }
+  if (Array.isArray(anyObj.edgeCuts) && anyObj.edgeCuts.length > 0) {
+    const cutDescs = anyObj.edgeCuts.map((ec: any) => {
+      const modeStr = ec.mode === 'round' ? 'R加工' : '斜めカット';
+      const distA = (ec.faceADist * 1000).toFixed(1);
+      const distB = (ec.faceBDist * 1000).toFixed(1);
+      return `エッジ${ec.edgeIndex}: ${modeStr} ${distA}×${distB}mm`;
+    });
+    processingParts.push(`エッジ加工 (${cutDescs.join(', ')})`);
+  }
+  const processingInfo = processingParts.length > 0 ? processingParts.join(' / ') : 'なし';
 
   return {
     name,
