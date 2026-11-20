@@ -158,16 +158,22 @@ export class Viewer {
 
     // カメラ同期
     if (data.camera && data.camera.position && data.camera.target) {
-      this.camera.position.set(
-        data.camera.position.x,
-        data.camera.position.y,
-        data.camera.position.z
-      );
-      this.controls.target.set(
+      const target = new THREE.Vector3(
         data.camera.target.x,
         data.camera.target.y,
         data.camera.target.z
       );
+      const position = new THREE.Vector3(
+        data.camera.position.x,
+        data.camera.position.y,
+        data.camera.position.z
+      );
+
+      // モデル表示サイズが約2倍になるよう、注視点までの距離を 1/2 (0.5倍) に近づける
+      position.sub(target).multiplyScalar(1 / 2).add(target);
+
+      this.camera.position.copy(position);
+      this.controls.target.copy(target);
     } else {
       this.fitToModel();
     }
