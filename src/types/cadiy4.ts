@@ -34,6 +34,23 @@ export interface BoundingBox3D {
 export interface CameraData {
   position: Vector3;
   target: Vector3;
+  fov?: number;
+  isOrthographic?: boolean;
+  partsLabelDisplayMode?: string;
+  showShadow?: boolean;
+  showFloor?: boolean;
+  drawMode?: string;
+  presetView?: string;
+  legacyDrawMode?: string | number;
+  legacyLayerColorMode?: boolean;
+  legacyViewingMode?: string;
+}
+
+export interface SceneSnapshot {
+  id: number;
+  name: string;
+  camera: CameraData;
+  visibleLayerIds: number[];
 }
 
 export interface StandardRef {
@@ -336,7 +353,7 @@ export interface Cadiy4Data {
   layers: LayerData[];
   activeLayerId?: number;
   selectedIds?: string[];
-  snaps?: any[];
+  snaps?: SceneSnapshot[];
   cutList?: CutListData;
   paint?: {
     snapshot?: PaintSnapshot;

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CadiyObject, LumberObject, BoardObject, CylinderObject, DimensionObject, TextBoardObject, PictureObject, PictureImageItem, TubeObject, CommentObject, PolygonObject, PolygonMeshItem, PolygonMesh, PaintSnapshot, PaintItem, ColorRGB } from '../types/cadiy4';
+import { CadiyObject, LumberObject, BoardObject, CylinderObject, DimensionObject, TextBoardObject, PictureObject, PictureImageItem, TubeObject, CommentObject, PolygonObject, BooleanObject, PolygonMeshItem, PolygonMesh, PaintSnapshot, PaintItem, ColorRGB } from '../types/cadiy4';
 import { MaterialFactory } from './MaterialFactory';
 import { TextBoardBuilder } from './TextBoardBuilder';
 import { DimensionBuilder } from './DimensionBuilder';
@@ -167,6 +167,9 @@ export class ModelBuilder {
           geometry = new THREE.BoxGeometry(obj.size.x, obj.size.y, obj.size.z);
         }
         break;
+      case 'boolean':
+        geometry = this.createBooleanGeometry(obj as BooleanObject);
+        break;
       default:
         geometry = new THREE.BoxGeometry(obj.size.x, obj.size.y, obj.size.z);
         break;
@@ -205,6 +208,40 @@ export class ModelBuilder {
     }
 
     return mesh;
+  }
+
+  /**
+   * ブーリアン結合パーツのメッシュジオメトリを構築
+   */
+  private createBooleanGeometry(obj: BooleanObject): THREE.BufferGeometry {
+    if (obj.vertices && obj.faces && Array.isArray(obj.vertices) && Array.isArray(obj.faces)) {
+      const positions: number[] = [];
+      const vertices = obj.vertices;
+
+      for (const face of obj.faces) {
+        if (!face || !Array.isArray(face.indices) || face.indices.length < 3) continue;
+        const indices = face.indices;
+        const triCount = indices.length - 2;
+        for (let t = 0; t < triCount; t++) {
+          const tri = [indices[0], indices[t + 1], indices[t + 2]];
+          for (const vi of tri) {
+            const v = vertices[vi];
+            if (v && typeof v.x === 'number') {
+              positions.push(v.x, v.y, v.z);
+            }
+          }
+        }
+      }
+
+      if (positions.length > 0) {
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geometry.computeVertexNormals();
+        return geometry;
+      }
+    }
+
+    return new THREE.BoxGeometry(obj.size.x, obj.size.y, obj.size.z);
   }
 
   private createBoxGeometry(obj: LumberObject | BoardObject): THREE.BufferGeometry {

@@ -56,7 +56,10 @@
     },
     "snaps": {
       "type": "array",
-      "description": "Snap point configurations or constraints.",
+      "description": "List of scene snapshots containing camera view and layer visibility presets (スナップ).",
+      "items": {
+        "$ref": "#/definitions/SceneSnapshot"
+      },
       "default": []
     },
     "cutList": {
@@ -152,11 +155,47 @@
     },
     "Camera": {
       "type": "object",
-      "description": "3D viewport camera position and target orientation.",
+      "description": "3D viewport camera position, target orientation, and rendering display options.",
       "required": ["position", "target"],
       "properties": {
         "position": { "$ref": "#/definitions/Vector3" },
-        "target": { "$ref": "#/definitions/Vector3" }
+        "target": { "$ref": "#/definitions/Vector3" },
+        "fov": { "type": "number", "description": "Camera vertical field of view in degrees (typical default: 20 or 45)." },
+        "isOrthographic": { "type": "boolean", "description": "Whether orthographic projection is used." },
+        "partsLabelDisplayMode": { "type": "string", "description": "Parts label display mode in 3D viewport (e.g. 'none', 'partName', 'name')." },
+        "showShadow": { "type": "boolean", "description": "Whether shadow casting is enabled." },
+        "showFloor": { "type": "boolean", "description": "Whether ground floor grid is visible." },
+        "drawMode": { "type": "string", "description": "3D render mode (e.g. 'faceAndEdge', 'faceOnly', 'wireframe')." },
+        "presetView": { "type": "string", "description": "Preset view orientation identifier (e.g. 'isometric', 'front', 'top')." },
+        "legacyDrawMode": { "type": ["string", "integer"] },
+        "legacyLayerColorMode": { "type": "boolean" },
+        "legacyViewingMode": { "type": "string" }
+      }
+    },
+    "SceneSnapshot": {
+      "type": "object",
+      "description": "Scene snapshot record storing camera angle, rendering settings, and layer visibility state (スナップ).",
+      "required": ["id", "name", "camera", "visibleLayerIds"],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "description": "Unique snapshot identifier."
+        },
+        "name": {
+          "type": "string",
+          "description": "Snapshot display name (e.g. '分解前', '作成①②')."
+        },
+        "camera": {
+          "$ref": "#/definitions/Camera",
+          "description": "Camera orientation, projection, and rendering display modes for this snapshot."
+        },
+        "visibleLayerIds": {
+          "type": "array",
+          "description": "List of layer IDs that are made visible when activating this snapshot.",
+          "items": {
+            "type": "integer"
+          }
+        }
       }
     },
     "Layer": {
@@ -448,7 +487,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Internal unique identifier (UUID v4 format or 'legacy-XXX')."
+          "description": "Internal unique identifier (UUID v4 format or 'legacy-XXX'). Note: In imported or converted legacy projects, duplicate IDs such as 'legacy-0' may appear; displayId serves as the primary unique part identifier in those cases."
         },
         "name": {
           "type": "string",

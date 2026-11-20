@@ -55,7 +55,7 @@
 | `layers` | `array` | 必須 | レイヤー（フォルダ）の階層構造定義。 |
 | `activeLayerId` | `integer` | 任意 | 現在編集対象としてアクティブになっているレイヤーID。 |
 | `selectedIds` | `array<string>` | 任意 | ビューポート上で現在選択状態にあるオブジェクトのUUID配列。 |
-| `snaps` | `array` | 任意 | スナップ機能の設定・拘束情報。通常は空配列 `[]`。 |
+| `snaps` | `array` | 任意 | シーンスナップショット（カメラ視点・描画設定・レイヤー表示状態のプリセット）の配列。 |
 | `cutList` | `object` | 任意 | 木取り図の計算パラメータおよび原木へのパーツ配置情報。 |
 | `polygonMeshTable` | `array` / `object` | 任意 | 既製パーツや3Dプリンタモデル等のポリゴン頂点・面定義テーブル（配列またはオブジェクト辞書）。 |
 | `paint` | `object` | 任意 | 塗料・仕上げ設定のスナップショット（`snapshot.paints` 配下に各塗料の定義を保持）。 |
@@ -69,7 +69,7 @@
 
 | フィールド名 | 型 | 説明 |
 | :--- | :--- | :--- |
-| `id` | `string` | 一意の識別子（UUID v4 または `legacy-XXX`）。 |
+| `id` | `string` | 一意の識別子（UUID v4 または `legacy-XXX`）。※旧形式や外部移行データでは `"legacy-0"` のように同一IDが重複して出現する場合があり、その際は `displayId` が実質的な一意識別キーとなります。 |
 | `name` | `string` | オブジェクトの基本名称・規格名（例: `"SPF 2x2材"`, `"寸法線"`, `"蝶番32mm"`）。 |
 | `partName` | `string` | オプション。ユーザーが付与した個別パーツ名（例: `"脚 (左前)"`, `"天板"`）。 |
 | `position` | `Vector3` | ワールド座標系におけるパーツバウンディングボックスの中心位置 (`x, y, z`) [m]。 |
@@ -83,7 +83,7 @@
 | `layerId` | `integer` | 所属するレイヤーの ID（ルートは `0`）。 |
 | `color` | `ColorRGB` | 基本色 (`r, g, b` 各 0.0〜1.0)。 |
 | `textureId` | `integer` | 木目などのテクスチャ番号（0: 単色、1: 木材木目、2: 板材木目 等）。 |
-| `displayId` | `integer` | ユーザー画面に表示される識別番号（通し番号）。 |
+| `displayId` | `integer` | ユーザー画面に表示される識別番号（通し番号）。シーン内で各パーツを一意に特定するための通し番号としても機能。 |
 | `noAggregated` | `boolean` | 材料取り図（木取り図）やBOM集計対象から除外するかどうかのフラグ。 |
 | `type` | `string` | オブジェクトの種別（下記参照）。 |
 
@@ -216,6 +216,13 @@ DIY特殊素材です。
 - `snapVertices`: スナップ点頂点座標リスト (`Vector3[]`)。
 - `vertices`, `faces`: インラインメッシュ頂点・面データ。
 
+#### 13. `boolean` (ブーリアン結合パーツ)
+複数の部材を結合・切削した合成立体オブジェクトです（組木パズルや複雑な切り欠き加工等）。
+- `vertices`: メッシュ頂点座標配列 (`Vector3[]`)。単位はメートル (m)。
+- `faces`: 面ポリゴン配列 (`{ indices: number[] }[]`)。
+- `sourceMaterials`: ブーリアン演算前の元部材情報のスナップショット配列 (`SourceMaterial[]`)。
+  - 各要素に `type`, `standardSize`, `color`, `commentText`, `specificGravity`, `textureId` を保持。
+
 ---
 
 ## 4. レイヤー (`layers[*]`) 仕様
@@ -330,3 +337,34 @@ caDIY3D の画面上で「材料取り図」を一度でも表示・計算する
 | `partsId` | `string` | 必須 | 配置対象オブジェクトの ID（`objects[*].id` を参照する UUID）。 |
 | `x` | `number` | 必須 | 母材上の X 軸オフセット座標 [m]。角材や丸棒等の 1D レイアウト時は `0`、板材等の 2D レイアウト時は幅方向の配置位置。 |
 | `z` | `number` | 必須 | 母材上の Z 軸オフセット座標（長手方向の配置位置）[m]。前のパーツの長さ＋切り代（`cutWidthMm`）の累積オフセット。 |
+
+---
+
+## 7. シーンスナップショット (`snaps[*]`) 仕様
+
+caDIY3D の「スナップ」機能で記録された視点やレイヤー表示状態のプリセット情報です。組み立て手順や分解ステップなどのビュー切り替えに使用されます。
+
+```json
+{
+  "id": 1,
+  "name": "分解前(作成用モデル)",
+  "camera": {
+    "position": { "x": 0.426, "y": 0.301, "z": 0.838 },
+    "target": { "x": 0.000, "y": 0.000, "z": 0.000 },
+    "fov": 20,
+    "isOrthographic": false,
+    "partsLabelDisplayMode": "none",
+    "showShadow": true,
+    "showFloor": false,
+    "drawMode": "faceAndEdge"
+  },
+  "visibleLayerIds": [ 0, 1 ]
+}
+```
+
+| フィールド名 | 型 | 必須 | 説明 |
+| :--- | :--- | :---: | :--- |
+| `id` | `integer` | 必須 | スナップショットの一意識別子。 |
+| `name` | `string` | 必須 | スナップショットの表示名（例: `"分解前"`, `"作成①②"`）。 |
+| `camera` | `Camera` | 必須 | スナップショット適用時のカメラ視点、注視点、視野角 (`fov`)、投影方式、描画設定。 |
+| `visibleLayerIds` | `array<integer>` | 必須 | スナップショット適用時に表示（`visible: true`）とするレイヤーIDのリスト。リストに含まれないレイヤーは非表示となります。 |

@@ -28,6 +28,35 @@ export class Cadiy4Parser {
       throw new Error('フォーマットエラー: "objects" フィールドが見つかりません。');
     }
 
+    // オブジェクトのID重複検出と正規化（legacy-0 等のレガシー重複IDの救済）
+    const seenIds = new Set<string>();
+    const duplicateIds = new Set<string>();
+    for (const obj of data.objects) {
+      if (obj && typeof obj.id === 'string') {
+        if (seenIds.has(obj.id)) {
+          duplicateIds.add(obj.id);
+        } else {
+          seenIds.add(obj.id);
+        }
+      }
+    }
+
+    if (duplicateIds.size > 0) {
+      const usedIds = new Set<string>();
+      for (let i = 0; i < data.objects.length; i++) {
+        const obj = data.objects[i];
+        if (!obj) continue;
+        if (duplicateIds.has(obj.id) || !obj.id) {
+          let newId = obj.displayId !== undefined ? `legacy-${obj.displayId}` : `${obj.id || 'obj'}-${i}`;
+          if (usedIds.has(newId)) {
+            newId = `${newId}-${i}`;
+          }
+          obj.id = newId;
+        }
+        usedIds.add(obj.id);
+      }
+    }
+
     return data as Cadiy4Data;
   }
 }
