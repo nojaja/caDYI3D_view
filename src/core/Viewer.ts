@@ -28,6 +28,7 @@ export class Viewer {
   // 選択中オブジェクトの3Dハイライト管理 (Rのみ、透明度50%)
   private highlightedMesh: THREE.Mesh | null = null;
   private originalMaterial: THREE.Material | THREE.Material[] | null = null;
+  private isObjectVisibleChecker?: (objectId: string) => boolean;
 
   // スマホ長押しタップ判定管理
   private longPressTimer: any = null;
@@ -133,6 +134,8 @@ export class Viewer {
    * cadiy4 データをロードしてシーンに配置する
    */
   public loadModel(data: Cadiy4Data, isObjectVisible?: (objectId: string) => boolean): void {
+    this.isObjectVisibleChecker = isObjectVisible;
+
     // 既存ハイライトの破棄
     this.highlightObject(null);
 
@@ -208,6 +211,7 @@ export class Viewer {
    * 全オブジェクトの可視性を判定関数に基づいて一括同期する
    */
   public syncVisibility(isObjectVisible: (objectId: string) => boolean): void {
+    this.isObjectVisibleChecker = isObjectVisible;
     if (!this.currentModelGroup) return;
 
     this.currentModelGroup.traverse((child) => {
@@ -216,6 +220,23 @@ export class Viewer {
         child.visible = isObjectVisible(obj.id);
       }
     });
+  }
+
+  /**
+   * オブジェクトおよびその祖先ノードが表示状態（visible === true）であるか判定する
+   */
+  public isObjectVisibleInScene(object: THREE.Object3D): boolean {
+    let curr: THREE.Object3D | null = object;
+    while (curr) {
+      if (!curr.visible) {
+        return false;
+      }
+      if (curr === this.currentModelGroup || curr === this.scene) {
+        break;
+      }
+      curr = curr.parent;
+    }
+    return true;
   }
 
   /**
@@ -275,7 +296,10 @@ export class Viewer {
     let targetMesh: THREE.Mesh | null = null;
     this.currentModelGroup.traverse((child) => {
       if (!targetMesh && (child as THREE.Mesh).isMesh && child.userData?.cadiyObject) {
+        if (!this.isObjectVisibleInScene(child)) return;
         const obj = child.userData.cadiyObject as CadiyObject;
+        if (obj.visible === false) return;
+        if (this.isObjectVisibleChecker && !this.isObjectVisibleChecker(obj.id)) return;
         if (obj.id === objectIdOrName || (obj.partName || obj.name) === objectIdOrName) {
           targetMesh = child as THREE.Mesh;
         }
@@ -352,13 +376,23 @@ export class Viewer {
       const hits: THREE.Intersection[] = raycaster.intersectObjects(this.currentModelGroup.children, true);
 
       for (const hit of hits) {
+        if (!this.isObjectVisibleInScene(hit.object)) {
+          continue;
+        }
+
         let curr: THREE.Object3D | null = hit.object;
         while (curr && !curr.userData?.cadiyObject && curr !== this.currentModelGroup) {
           curr = curr.parent;
         }
         if (curr && curr.userData?.cadiyObject) {
+          if (!this.isObjectVisibleInScene(curr)) {
+            continue;
+          }
           const hitObj = curr.userData.cadiyObject as CadiyObject;
           if (hitObj.type === 'dimension' || hitObj.type === 'comment') continue; // 注釈・寸法線は透過
+          if (hitObj.visible === false) continue;
+          if (this.isObjectVisibleChecker && !this.isObjectVisibleChecker(hitObj.id)) continue;
+
           if (hitObj.id === targetObj.id || (targetObj.partName && hitObj.partName === targetObj.partName)) {
             return { x: pixelX, y: pixelY };
           }
@@ -626,19 +660,28 @@ export class Viewer {
     }, 250);
   }
 
-  private getIntersectedObject(): CadiyObject | null {
+  public getIntersectedObject(): CadiyObject | null {
     if (!this.currentModelGroup) return null;
     this.raycaster.setFromCamera(this.mouse, this.camera);
     const intersects = this.raycaster.intersectObjects(this.currentModelGroup.children, true);
 
     for (const hit of intersects) {
+      if (!this.isObjectVisibleInScene(hit.object)) {
+        continue;
+      }
+
       let curr: THREE.Object3D | null = hit.object;
       while (curr && !curr.userData?.cadiyObject && curr !== this.currentModelGroup) {
         curr = curr.parent;
       }
       if (curr && curr.userData?.cadiyObject) {
+        if (!this.isObjectVisibleInScene(curr)) {
+          continue;
+        }
         const cObj = curr.userData.cadiyObject as CadiyObject;
         if (cObj.type === 'dimension' || cObj.type === 'comment') continue; // 寸法線・注釈はクリック選択対象外
+        if (cObj.visible === false) continue;
+        if (this.isObjectVisibleChecker && !this.isObjectVisibleChecker(cObj.id)) continue;
         return cObj;
       }
     }

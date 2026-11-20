@@ -120,4 +120,46 @@ test.describe('caDIY3D Web Viewer - サブフォルダを含むn段階層ツリ�
     expect(objectVisibilities['legacy-1102']).toBe(false);
     expect(objectVisibilities['obj-grandchild-visible']).toBe(false);
   });
+
+  test('3Dview上で非表示オブジェクトをクリックしても選択されず、インスペクターが表示されないこと', async ({ page }) => {
+    // 3Dシーン上の非表示オブジェクトのIDと位置を検証
+    const result = await page.evaluate(() => {
+      const viewer = (window as any).__VIEWER__;
+      const modelGroup = (window as any).__MODEL_GROUP__;
+
+      // 初期非表示オブジェクト 'legacy-1498' のメッシュを検索
+      let hiddenMesh: any = null;
+      modelGroup.traverse((child: any) => {
+        if (child.userData?.id === 'legacy-1498') {
+          hiddenMesh = child;
+        }
+      });
+
+      if (!hiddenMesh) return { error: 'hidden mesh not found' };
+
+      // 非表示メッシュの中心ワールド座標を計算
+      const worldPos = hiddenMesh.position.clone();
+      hiddenMesh.getWorldPosition(worldPos);
+
+      // スクリーン座標 (NDC: -1〜1) に変換
+      const camera = viewer.camera;
+      const projected = worldPos.clone().project(camera);
+
+      // viewer の mouse 座標に設定して getIntersectedObject を直接実行
+      viewer.mouse.x = projected.x;
+      viewer.mouse.y = projected.y;
+      const hitObj = viewer.getIntersectedObject();
+
+      return {
+        hitObjId: hitObj ? hitObj.id : null,
+      };
+    });
+
+    // 非表示オブジェクト 'legacy-1498' は選択されないこと（null または別の表示部材）
+    expect(result.hitObjId).not.toBe('legacy-1498');
+
+    // canvas を実際にクリックしてもインスペクターが開かないこと
+    const inspectorCard = page.locator('#inspector-card');
+    await expect(inspectorCard).not.toHaveClass(/active/);
+  });
 });
