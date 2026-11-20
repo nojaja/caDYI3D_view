@@ -99,6 +99,13 @@
           "$ref": "#/definitions/PaintSnapshot"
         }
       }
+    },
+    "movableGroups": {
+      "type": "array",
+      "description": "List of articulated movable / animation mechanism groups (e.g. hinges, slides, opening awnings).",
+      "items": {
+        "$ref": "#/definitions/MovableGroup"
+      }
     }
   },
   "definitions": {
@@ -750,7 +757,7 @@
         },
         "thickness": {
           "type": "number",
-          "description": "Thickness in meters for waveBoard, tube, or steelProfile."
+          "description": "Nominal or catalog material thickness in meters for waveBoard, tube, or steelProfile (for waveBoard, 3D wave overall height is defined by size.y)."
         },
         "subType": {
           "type": "string",
@@ -911,6 +918,85 @@
         },
         "mergedGeometry": {
           "$ref": "#/definitions/MergedGeometry"
+        }
+      }
+    },
+    "MovableGroup": {
+      "type": "object",
+      "description": "Definition of an articulated motion / movable mechanism group (e.g. rotation hinges, sliding rails, opening doors/awnings).",
+      "required": ["id", "kind", "axisPosition", "axisQuaternion"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the movable group (e.g. 'root' or UUID)."
+        },
+        "name": {
+          "type": "string",
+          "description": "Descriptive display name of the movable group."
+        },
+        "kind": {
+          "type": "string",
+          "description": "Kind of motion mechanism ('rotate', 'slide', 'move').",
+          "enum": ["rotate", "slide", "move"]
+        },
+        "axisPosition": {
+          "$ref": "#/definitions/Vector3",
+          "description": "Pivot position or origin of motion in meters."
+        },
+        "axisQuaternion": {
+          "$ref": "#/definitions/Quaternion",
+          "description": "Orientation / axis direction of motion represented as a quaternion."
+        },
+        "rotateMax": {
+          "type": "number",
+          "description": "Maximum rotational angle displacement in degrees."
+        },
+        "rotateCurrent": {
+          "type": "number",
+          "description": "Current rotational angle displacement in degrees."
+        },
+        "moveMax": {
+          "type": "number",
+          "description": "Maximum translation displacement in meters."
+        },
+        "moveCurrent": {
+          "type": "number",
+          "description": "Current translation displacement in meters."
+        },
+        "targetObjectIds": {
+          "type": "array",
+          "description": "List of SceneObject IDs that belong to and move with this group.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "parentGroupId": {
+          "type": ["string", "null"],
+          "description": "ID of parent movable group for hierarchical linkage, or null for root."
+        },
+        "order": {
+          "type": "integer",
+          "description": "Execution / playback sequence order index."
+        },
+        "playTrigger": {
+          "type": "string",
+          "description": "Playback trigger condition (e.g. 'afterPrevious', 'withPrevious', 'manual')."
+        },
+        "playDelaySec": {
+          "type": "number",
+          "description": "Delay in seconds before animation begins."
+        },
+        "playDurationSec": {
+          "type": "number",
+          "description": "Duration in seconds for one full stroke of motion."
+        },
+        "playMode": {
+          "type": "string",
+          "description": "Playback repeat mode (e.g. 'roundTrip', 'once', 'loop')."
+        },
+        "playRepeat": {
+          "type": "integer",
+          "description": "Number of repeat playback cycles."
         }
       }
     }

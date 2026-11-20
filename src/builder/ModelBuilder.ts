@@ -1,11 +1,12 @@
 import * as THREE from 'three';
-import { CadiyObject, LumberObject, BoardObject, CylinderObject, DimensionObject, TextBoardObject, PictureObject, PictureImageItem, TubeObject, CommentObject, PolygonObject, BooleanObject, MergedObject, PolygonMeshItem, PolygonMesh, PaintSnapshot, PaintItem, ColorRGB } from '../types/cadiy4';
+import { CadiyObject, LumberObject, BoardObject, CylinderObject, DimensionObject, TextBoardObject, PictureObject, PictureImageItem, TubeObject, CommentObject, PolygonObject, BooleanObject, MergedObject, PolygonMeshItem, PolygonMesh, PaintSnapshot, PaintItem, ColorRGB, WaveBoardObject, ProtractorObject } from '../types/cadiy4';
 import { MaterialFactory } from './MaterialFactory';
 import { TextBoardBuilder } from './TextBoardBuilder';
 import { DimensionBuilder } from './DimensionBuilder';
 import { PictureBuilder } from './PictureBuilder';
 import { CommentBuilder } from './CommentBuilder';
 import { PolygonBuilder } from './PolygonBuilder';
+import { ProtractorBuilder } from './ProtractorBuilder';
 
 export class ModelBuilder {
   private materialFactory: MaterialFactory;
@@ -14,6 +15,7 @@ export class ModelBuilder {
   private pictureBuilder: PictureBuilder;
   private commentBuilder: CommentBuilder;
   private polygonBuilder: PolygonBuilder;
+  private protractorBuilder: ProtractorBuilder;
   private paintMap = new Map<string, PaintItem>();
 
   constructor(materialFactory?: MaterialFactory) {
@@ -23,6 +25,7 @@ export class ModelBuilder {
     this.pictureBuilder = new PictureBuilder();
     this.commentBuilder = new CommentBuilder();
     this.polygonBuilder = new PolygonBuilder();
+    this.protractorBuilder = new ProtractorBuilder();
   }
 
   /**
@@ -147,12 +150,23 @@ export class ModelBuilder {
       return commentMesh;
     }
 
+    if (obj.type === 'protractor') {
+      const protractorMesh = this.protractorBuilder.build(obj as ProtractorObject);
+      if (protractorMesh) {
+        protractorMesh.visible = finalVisible;
+      }
+      return protractorMesh;
+    }
+
     let geometry: THREE.BufferGeometry | null = null;
 
     switch (obj.type) {
       case 'lumber':
       case 'board':
         geometry = this.createBoxGeometry(obj as LumberObject | BoardObject);
+        break;
+      case 'waveBoard':
+        geometry = this.createWaveBoardGeometry(obj as WaveBoardObject);
         break;
       case 'cylinder':
       case 'roundBoard':
@@ -204,10 +218,25 @@ export class ModelBuilder {
 
     // 通常部材のエッジ線（dummyのワイヤフレーム部材には追加しない）
     if (!obj.dummy) {
-      const edges = new THREE.EdgesGeometry(geometry, 25);
+      // waveBoard (波板) は caDIY3D 仕様に合わせ、四角いバウンディングボックス枠の中に波板オブジェクトを収める
+      let edgeGeom: THREE.BufferGeometry;
+      let shouldDisposeEdgeGeom = false;
+      if (obj.type === 'waveBoard') {
+        edgeGeom = new THREE.BoxGeometry(obj.size.x, obj.size.y, obj.size.z);
+        shouldDisposeEdgeGeom = true;
+      } else {
+        edgeGeom = geometry;
+      }
+
+      const edges = new THREE.EdgesGeometry(edgeGeom, 25);
       const line = new THREE.LineSegments(edges, this.materialFactory.getEdgeMaterial());
+      line.name = 'edge-lines';
       line.raycast = () => {}; // エッジ線自体はレイキャスト交差判定の対象外とする
       mesh.add(line);
+
+      if (shouldDisposeEdgeGeom) {
+        edgeGeom.dispose();
+      }
     }
 
     return mesh;
@@ -536,6 +565,140 @@ export class ModelBuilder {
 
     const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
     geometry.translate(0, 0, -height / 2);
+    geometry.computeVertexNormals();
+
+    return geometry;
+  }
+
+  /**
+   * 波板 (waveBoard) の波状サーフェス BufferGeometry を生成
+   */
+  private createWaveBoardGeometry(obj: WaveBoardObject): THREE.BufferGeometry {
+    const width = obj.size.x;
+    const length = obj.size.z;
+    // waveBoard の全高（山-谷の厚み方向の寸法）は obj.size.y (例: 0.012m = 12mm)
+    const waveTotalHeight = Math.max(obj.size.y, 0.006);
+    // 実体板厚 (波板シートの厚み、通常 0.8mm〜1.5mm 程度)
+    const plateThickness = Math.min(Math.max(waveTotalHeight * 0.12, 0.001), 0.002);
+    // 振幅 (中心線から山頂/谷底までの距離)
+    const amplitude = (waveTotalHeight - plateThickness) / 2;
+
+    // 波のピッチ (sineLarge: 約63mm, sineSmall: 約32mm)
+    let pitch = 0.063;
+    if (obj.subType === 'sineSmall') {
+      pitch = 0.032;
+    } else if (obj.subType === 'sineLarge') {
+      pitch = 0.063;
+    }
+
+    const segsX = Math.max(24, Math.round(width / 0.006));
+    const segsZ = Math.max(2, Math.round(length / 0.05));
+
+    const positions: number[] = [];
+    const uvs: number[] = [];
+    const indices: number[] = [];
+
+    const halfW = width / 2;
+    const halfL = length / 2;
+    const halfT = plateThickness / 2;
+
+    const stride = segsZ + 1;
+    // 上面グリッド
+    for (let ix = 0; ix <= segsX; ix++) {
+      const u = ix / segsX;
+      const x = -halfW + u * width;
+      const waveY = amplitude * Math.sin((x / pitch) * Math.PI * 2);
+      for (let iz = 0; iz <= segsZ; iz++) {
+        const v = iz / segsZ;
+        const z = -halfL + v * length;
+        positions.push(x, waveY + halfT, z);
+        uvs.push(u, v);
+      }
+    }
+
+    // 下面グリッド
+    const topCount = (segsX + 1) * (segsZ + 1);
+    for (let ix = 0; ix <= segsX; ix++) {
+      const u = ix / segsX;
+      const x = -halfW + u * width;
+      const waveY = amplitude * Math.sin((x / pitch) * Math.PI * 2);
+      for (let iz = 0; iz <= segsZ; iz++) {
+        const v = iz / segsZ;
+        const z = -halfL + v * length;
+        positions.push(x, waveY - halfT, z);
+        uvs.push(u, v);
+      }
+    }
+
+    // 上面の面インデックス
+    for (let ix = 0; ix < segsX; ix++) {
+      for (let iz = 0; iz < segsZ; iz++) {
+        const a = ix * stride + iz;
+        const b = (ix + 1) * stride + iz;
+        const c = (ix + 1) * stride + (iz + 1);
+        const d = ix * stride + (iz + 1);
+        indices.push(a, b, c);
+        indices.push(a, c, d);
+      }
+    }
+
+    // 下面の面インデックス
+    for (let ix = 0; ix < segsX; ix++) {
+      for (let iz = 0; iz < segsZ; iz++) {
+        const a = topCount + ix * stride + iz;
+        const b = topCount + (ix + 1) * stride + iz;
+        const c = topCount + (ix + 1) * stride + (iz + 1);
+        const d = topCount + ix * stride + (iz + 1);
+        indices.push(a, c, b);
+        indices.push(a, d, c);
+      }
+    }
+
+    // 側面接続
+    // 1. Z = -halfL (始端面)
+    for (let ix = 0; ix < segsX; ix++) {
+      const topA = ix * stride;
+      const topB = (ix + 1) * stride;
+      const botA = topCount + ix * stride;
+      const botB = topCount + (ix + 1) * stride;
+      indices.push(topA, botB, topB);
+      indices.push(topA, botA, botB);
+    }
+
+    // 2. Z = +halfL (終端面)
+    for (let ix = 0; ix < segsX; ix++) {
+      const topA = ix * stride + segsZ;
+      const topB = (ix + 1) * stride + segsZ;
+      const botA = topCount + ix * stride + segsZ;
+      const botB = topCount + (ix + 1) * stride + segsZ;
+      indices.push(topA, topB, botB);
+      indices.push(topA, botB, botA);
+    }
+
+    // 3. X = -halfW (左端面)
+    for (let iz = 0; iz < segsZ; iz++) {
+      const topA = iz;
+      const topB = iz + 1;
+      const botA = topCount + iz;
+      const botB = topCount + iz + 1;
+      indices.push(topA, topB, botB);
+      indices.push(topA, botB, botA);
+    }
+
+    // 4. X = +halfW (右端面)
+    for (let iz = 0; iz < segsZ; iz++) {
+      const topA = segsX * stride + iz;
+      const topB = segsX * stride + iz + 1;
+      const botA = topCount + segsX * stride + iz;
+      const botB = topCount + segsX * stride + iz + 1;
+      indices.push(topA, botB, topB);
+      indices.push(topA, botA, botB);
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geometry.setIndex(indices);
     geometry.computeVertexNormals();
 
     return geometry;

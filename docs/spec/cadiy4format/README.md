@@ -175,17 +175,25 @@ caDIY3D V4 のブーリアン演算（結合・切り欠き・差分・交差）
 - `thickness`: 板厚 [m]（例: `0.003`=3mm）。
 
 #### 7. `dimension` (寸法線)
-3D空間上に配置される測定寸法線です。
+オブジェクト間の長さや部材の辺の長さを図面上に表示する寸法線注釈です。
+- `position`: 計測対象となるオブジェクトの辺の中点座標 (`Vector3`)。
+- `size.z`: 計測寸法長 [m]（辺の長さ・主寸法線の長さ）。
+- `size.x`: 引き出し幅 [m]（辺から主寸法線までのオフセット距離の約 2 倍）。
+- `quaternion`: ローカル Z 軸が計測辺の長手方向、ローカル X 軸が引き出し線（外側）の方向を指す回転クォータニオン。
 - `linePattern`: 寸法線の線種（`0`: 実線）。
 - `auxLinePattern`: 補助引き出し線の線種（`0`: 実線）。
 - `lineWidth`: 線の太さ（ピクセル、例: `1.5`）。
 - `arrowType`: 矢印形状（`"inside"` または `"outside"`）。
 - `textVisible`: 数値テキストの表示フラグ。
-- `valuePosition`: 寸法値の位置（`"top"` 等）。
+- `valuePosition`: 寸法値の位置（`"top"` 等）。主寸法線の外側に配置されます。
 - `symbol`: 寸法値のプレフィックス記号（例: `""`, `"φ"`, `"R"`）。
 - `fontSize`: フォントサイズ（例: `24`）。
 - `billboard`: 常にカメラ方向を向くかどうかのフラグ。
 - `measure`: 詳細測定パラメータ (`start`, `end`, `side`, `offset`, `valueMm`)。
+  - `start`, `end`: オブジェクトの辺の始端・終端ワールド座標。
+  - `side`: 引き出し線の外側方向ベクトル（ローカル X 軸方向）。
+  - `offset`: オブジェクトの辺から主寸法線までの離隔距離 [m]（`size.x / 2`）。
+  - `valueMm`: 計算された実寸値 [mm]。
 
 #### 8. `textBoard` (看板・タイトル板)
 平面プレート上にテキストを表示する注釈です。
@@ -211,9 +219,12 @@ caDIY3D V4 のブーリアン演算（結合・切り欠き・差分・交差）
 - `linePattern`, `lineWidth`, `arrowType`, `textVisible`, `fontSize`, `billboard`。
 
 #### 11. `waveBoard` (波板) / `tube` (パイプ)
-DIY特殊素材です。
-- `thickness`: 素材の厚み [m]。
-- `subType`: サブタイプ識別子（波板: `"sineSmall"` 等、パイプ: `"pvc"` 等）。
+DIY特殊素材です。caDIY3D 画面上では、四角いバウンディングボックス（直方体外枠、高さ `size.y`）の中に波板オブジェクトが収まる形で表示されます。
+- `size.x`: 波板バウンディングボックスの幅 [m]（波が並ぶ横幅方向）。
+- `size.y`: 波板バウンディングボックスの全高 [m]（山頂から谷底までの厚み・高さ寸法、例: `0.012` = 12mm）。
+- `size.z`: 波板バウンディングボックスの長さ [m]（勾配・水流れ方向寸法）。
+- `thickness`: 素材・規格の参考厚み [m]。
+- `subType`: サブタイプ識別子（波板: `"sineLarge"` 大波・ピッチ約63mm、`"sineSmall"` 小波・ピッチ約32mm、パイプ: `"pvc"` 等）。
 
 #### 12. `polygon` (既製パーツ・3Dモデル)
 金具（丁番・L字金具）や人形、3Dプリンタパーツなどです。
@@ -376,3 +387,53 @@ caDIY3D の「スナップ」機能で記録された視点やレイヤー表示
 | `name` | `string` | 必須 | スナップショットの表示名（例: `"分解前"`, `"作成①②"`）。 |
 | `camera` | `Camera` | 必須 | スナップショット適用時のカメラ視点、注視点、視野角 (`fov`)、投影方式、描画設定。 |
 | `visibleLayerIds` | `array<integer>` | 必須 | スナップショット適用時に表示（`visible: true`）とするレイヤーIDのリスト。リストに含まれないレイヤーは非表示となります。 |
+
+---
+
+## 8. 可動グループ (`movableGroups[*]`) 仕様
+
+caDIY3D のアニメーション・可動機構（ヒンジ回転、スライド、引き出し、オーニングの開閉等）を定義するグループ構造です。
+
+```json
+{
+  "id": "root",
+  "name": "オーニング開閉",
+  "kind": "rotate",
+  "axisPosition": { "x": 0, "y": 0, "z": 0 },
+  "axisQuaternion": { "x": 0, "y": 0, "z": 0, "w": 1 },
+  "rotateMax": 90,
+  "rotateCurrent": 0,
+  "moveMax": 0.5,
+  "moveCurrent": 0,
+  "targetObjectIds": [ "part-uuid-1", "part-uuid-2" ],
+  "parentGroupId": null,
+  "order": 0,
+  "playTrigger": "afterPrevious",
+  "playDelaySec": 0,
+  "playDurationSec": 1.2,
+  "playMode": "roundTrip",
+  "playRepeat": 1
+}
+```
+
+### 8.1 フィールド一覧
+
+| フィールド名 | 型 | 必須 | 説明 |
+| :--- | :--- | :---: | :--- |
+| `id` | `string` | 必須 | 可動グループの一意識別子（`"root"` または UUID）。 |
+| `name` | `string` | 任意 | グループの表示名。 |
+| `kind` | `string` | 必須 | 動作種別。`"rotate"`（回転・ヒンジ）または `"slide"` / `"move"`（直動・スライドレール）。 |
+| `axisPosition` | `Vector3` | 必須 | 動作の基点位置（回転中心またはスライド開始位置）[m]。 |
+| `axisQuaternion` | `Quaternion` | 必須 | 動作軸の方向クォータニオン。 |
+| `rotateMax` | `number` | 任意 | 最大回転角度（度数法）。 |
+| `rotateCurrent` | `number` | 任意 | 現在の回転角度（度数法）。 |
+| `moveMax` | `number` | 任意 | 最大移動量 [m]。 |
+| `moveCurrent` | `number` | 任意 | 現在の移動量 [m]。 |
+| `targetObjectIds` | `array<string>` | 任意 | 連動して動く対象オブジェクト（`objects[*].id`）の ID 配列。 |
+| `parentGroupId` | `string \| null` | 任意 | 階層的な連動動作における親グループID（最上位は `null`）。 |
+| `order` | `integer` | 任意 | 再生実行順序インデックス。 |
+| `playTrigger` | `string` | 任意 | 再生開始トリガー（`"afterPrevious"`, `"withPrevious"`, `"manual"` 等）。 |
+| `playDelaySec` | `number` | 任意 | 再生開始前の遅延時間 [秒]。 |
+| `playDurationSec` | `number` | 任意 | 片道動作時間 [秒]。 |
+| `playMode` | `string` | 任意 | 再生方式（`"roundTrip"` 往復, `"once"` 片道, `"loop"` ループ）。 |
+| `playRepeat` | `integer` | 任意 | 繰り返し再生回数。 |

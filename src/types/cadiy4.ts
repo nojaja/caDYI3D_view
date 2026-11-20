@@ -356,6 +356,26 @@ export interface PaintSnapshot {
   updatedAt?: string;
 }
 
+export interface MovableGroup {
+  id: string;
+  name?: string;
+  kind: 'rotate' | 'slide' | 'move' | string;
+  axisPosition: Vector3;
+  axisQuaternion: Quaternion;
+  rotateMax?: number;
+  rotateCurrent?: number;
+  moveMax?: number;
+  moveCurrent?: number;
+  targetObjectIds?: string[];
+  parentGroupId?: string | null;
+  order?: number;
+  playTrigger?: string;
+  playDelaySec?: number;
+  playDurationSec?: number;
+  playMode?: string;
+  playRepeat?: number;
+}
+
 export interface Cadiy4Data {
   version: number;
   thumbnail: string;
@@ -367,6 +387,7 @@ export interface Cadiy4Data {
   selectedIds?: string[];
   snaps?: SceneSnapshot[];
   cutList?: CutListData;
+  movableGroups?: MovableGroup[];
   paint?: {
     snapshot?: PaintSnapshot;
   };

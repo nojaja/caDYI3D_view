@@ -9,48 +9,80 @@ export class DimensionBuilder {
     const group = new THREE.Group();
     group.name = `dimension-${obj.id}`;
 
-    const length = obj.size.z; // 寸法線の長さ (m)
-    const color = new THREE.Color(obj.color.r, obj.color.g, obj.color.b);
+    const length = obj.size?.z || 0; // 寸法線の長さ (m)
+    const color = obj.color
+      ? new THREE.Color(obj.color.r, obj.color.g, obj.color.b)
+      : new THREE.Color(0.2, 0.2, 0.2);
     const lineMaterial = new THREE.LineBasicMaterial({ color });
 
-    // 主寸法線（Z軸に沿って -length/2 から +length/2）
-    const linePoints = [
-      new THREE.Vector3(0, 0, -length / 2),
-      new THREE.Vector3(0, 0, length / 2),
-    ];
-    const lineGeometry = new THREE.BufferGeometry().setFromPoints(linePoints);
-    const mainLine = new THREE.Line(lineGeometry, lineMaterial);
-    group.add(mainLine);
+    // オブジェクトの辺からのオフセット量 (m)
+    // measure.offset があればそれを優先、なければ size.x / 2 を使用
+    const offset = obj.measure?.offset ?? (obj.size?.x ? obj.size.x / 2 : 0.075);
+    const overhang = 0.01; // 引き出し線が主寸法線を越える長さ (10mm)
 
-    // 両端の引き出し線 (補助線: X方向に少し伸ばす)
-    const extLen = 0.02; // 20mm
+    // 1. 両端の引き出し線 (オブジェクトの辺端点から寸法線外側へ伸ばす)
     const ext1Points = [
-      new THREE.Vector3(-extLen, 0, -length / 2),
-      new THREE.Vector3(extLen, 0, -length / 2),
+      new THREE.Vector3(0, 0, -length / 2),
+      new THREE.Vector3(offset + overhang, 0, -length / 2),
     ];
     const ext2Points = [
-      new THREE.Vector3(-extLen, 0, length / 2),
-      new THREE.Vector3(extLen, 0, length / 2),
+      new THREE.Vector3(0, 0, length / 2),
+      new THREE.Vector3(offset + overhang, 0, length / 2),
     ];
     group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ext1Points), lineMaterial));
     group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ext2Points), lineMaterial));
 
-    // 寸法値ラベル (mm表示: 0.35m -> 350)
-    const mmValue = Math.round(length * 1000);
-    const labelMesh = this.createLabelMesh(`${mmValue}`, color, obj.fontSize);
-    if (labelMesh) {
+    // 2. 主寸法線 (offset 位置で辺に平行に Z 方向へ引く)
+    const mainLinePoints = [
+      new THREE.Vector3(offset, 0, -length / 2),
+      new THREE.Vector3(offset, 0, length / 2),
+    ];
+    group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(mainLinePoints), lineMaterial));
+
+    // 3. 矢印 (Arrowheads: inside)
+    const arrowLen = Math.min(0.012, length * 0.15);
+    const arrowWid = arrowLen * 0.4;
+    // 始端側矢印
+    const arrow1Points = [
+      new THREE.Vector3(offset + arrowWid, 0, -length / 2 + arrowLen),
+      new THREE.Vector3(offset, 0, -length / 2),
+      new THREE.Vector3(offset - arrowWid, 0, -length / 2 + arrowLen),
+    ];
+    // 終端側矢印
+    const arrow2Points = [
+      new THREE.Vector3(offset + arrowWid, 0, length / 2 - arrowLen),
+      new THREE.Vector3(offset, 0, length / 2),
+      new THREE.Vector3(offset - arrowWid, 0, length / 2 - arrowLen),
+    ];
+    group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(arrow1Points), lineMaterial));
+    group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(arrow2Points), lineMaterial));
+
+    // 4. 寸法値ラベル (主寸法線のさらに外側に配置)
+    if (obj.textVisible !== false) {
+      const rawVal = obj.measure?.valueMm ?? length * 1000;
+      const mmValue = Math.round(rawVal * 10) / 10;
       const scale = obj.fontSize ? Math.max(obj.fontSize / 24, 0.6) : 1.0;
-      labelMesh.position.set(0, 0.04 * scale, 0); // 寸法線の上部に配置
-      group.add(labelMesh);
+      const labelMesh = this.createLabelMesh(`${mmValue}`, color, obj.fontSize);
+      if (labelMesh) {
+        // 主寸法線 (offset) の外側 (offset + 0.02) に配置
+        labelMesh.position.set(offset + 0.025 * scale, 0.001, 0);
+        group.add(labelMesh);
+      }
     }
 
     group.position.set(obj.position.x, obj.position.y, obj.position.z);
     group.quaternion.set(obj.quaternion.x, obj.quaternion.y, obj.quaternion.z, obj.quaternion.w);
     group.visible = obj.visible !== false;
 
-    group.userData = { cadiyObject: obj };
+    group.userData = {
+      cadiyObject: obj,
+      id: obj.id,
+      name: obj.name,
+      offset,
+      length,
+    };
 
-    // 寸法線およびラベルは3Dレイキャスト交差判定の対象外とする（部材クリックの邪魔にならないようにする）
+    // 寸法線およびラベルは3Dレイキャスト交差判定の対象外とする
     group.traverse((child) => {
       child.raycast = () => {};
     });
@@ -94,7 +126,9 @@ export class DimensionBuilder {
 
     const geometry = new THREE.PlaneGeometry(width, height);
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.rotateX(-Math.PI / 2); // 水平に見やすくする
+    // X-Z 平面上で寸法線 (Z軸) と平行に配置
+    mesh.rotateX(-Math.PI / 2);
+    mesh.rotateZ(-Math.PI / 2);
     return mesh;
   }
 }

@@ -1,0 +1,237 @@
+{
+  "version": 1,
+  "thumbnail": "",
+  "camera": {
+    "position": {
+      "x": 1.5,
+      "y": 1,
+      "z": 1.5
+    },
+    "target": {
+      "x": 0,
+      "y": 0.5,
+      "z": 0
+    }
+  },
+  "layers": [
+    {
+      "id": 0,
+      "name": "デフォルト",
+      "visible": true,
+      "locked": false,
+      "color": {
+        "r": 0.3,
+        "g": 0.5,
+        "b": 1
+      },
+      "parentId": null
+    }
+  ],
+  "objects": [
+    {
+      "id": "test-board-1",
+      "name": "柱材",
+      "partName": "支柱",
+      "type": "board",
+      "size": {
+        "x": 0.082,
+        "y": 0.032,
+        "z": 1
+      },
+      "position": {
+        "x": 0,
+        "y": 0.5,
+        "z": 0
+      },
+      "quaternion": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "color": {
+        "r": 0.63,
+        "g": 0.38,
+        "b": 0.03
+      },
+      "visible": true,
+      "locked": false,
+      "groupId": 0,
+      "layerId": 0,
+      "textureId": 1,
+      "displayId": 1
+    },
+    {
+      "id": "test-waveboard-1",
+      "name": "波板屋根",
+      "partName": "屋根",
+      "type": "waveBoard",
+      "size": {
+        "x": 1,
+        "y": 0.012,
+        "z": 0.4
+      },
+      "position": {
+        "x": 0,
+        "y": 1,
+        "z": 0
+      },
+      "quaternion": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "color": {
+        "r": 0.73,
+        "g": 0.11,
+        "b": 0.11
+      },
+      "visible": true,
+      "locked": false,
+      "groupId": 0,
+      "layerId": 0,
+      "textureId": 7,
+      "displayId": 2,
+      "thickness": 0.042,
+      "subType": "sineLarge"
+    },
+    {
+      "id": "test-protractor-1",
+      "name": "角度注釈",
+      "type": "protractor",
+      "size": {
+        "x": 0.3,
+        "y": 0,
+        "z": 0.3
+      },
+      "position": {
+        "x": 0,
+        "y": 0.8,
+        "z": 0
+      },
+      "quaternion": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "color": {
+        "r": 0.2,
+        "g": 0.2,
+        "b": 0.2
+      },
+      "visible": true,
+      "locked": false,
+      "groupId": 0,
+      "layerId": 0,
+      "textureId": 0,
+      "displayId": 3,
+      "angle": 60,
+      "linePattern": 0,
+      "auxLinePattern": 0,
+      "lineWidth": 1.5,
+      "arrowType": "inside",
+      "textVisible": true,
+      "fontSize": 24,
+      "billboard": false
+    },
+    {
+      "id": "test-dimension-1",
+      "name": "寸法線",
+      "type": "dimension",
+      "position": {
+        "x": 0,
+        "y": 0.5,
+        "z": 0
+      },
+      "quaternion": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "size": {
+        "x": 0.15,
+        "y": 0,
+        "z": 1
+      },
+      "visible": true,
+      "locked": false,
+      "groupId": 0,
+      "layerId": 0,
+      "color": {
+        "r": 0.2,
+        "g": 0.2,
+        "b": 0.2
+      },
+      "textureId": 0,
+      "displayId": 4,
+      "linePattern": 0,
+      "auxLinePattern": 0,
+      "lineWidth": 1.5,
+      "arrowType": "inside",
+      "textVisible": true,
+      "valuePosition": "top",
+      "symbol": "",
+      "fontSize": 24,
+      "billboard": false,
+      "measure": {
+        "start": {
+          "x": 0,
+          "y": 0.5,
+          "z": -0.5
+        },
+        "end": {
+          "x": 0,
+          "y": 0.5,
+          "z": 0.5
+        },
+        "side": {
+          "x": 1,
+          "y": 0,
+          "z": 0
+        },
+        "offset": 0.075,
+        "valueMm": 1000
+      }
+    }
+  ],
+  "movableGroups": [
+    {
+      "id": "movable-awning-root",
+      "name": "オーニング開閉機構",
+      "kind": "rotate",
+      "axisPosition": {
+        "x": 0,
+        "y": 1,
+        "z": 0
+      },
+      "axisQuaternion": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+      },
+      "rotateMax": 90,
+      "rotateCurrent": 0,
+      "moveMax": 0.5,
+      "moveCurrent": 0,
+      "targetObjectIds": [
+        "test-waveboard-1"
+      ],
+      "parentGroupId": null,
+      "order": 0,
+      "playTrigger": "afterPrevious",
+      "playDelaySec": 0,
+      "playDurationSec": 1.2,
+      "playMode": "roundTrip",
+      "playRepeat": 1
+    }
+  ],
+  "cutList": {
+    "cutWidthMm": 3,
+    "packingMode": "adjacent",
+    "layouts": []
+  }
+}
