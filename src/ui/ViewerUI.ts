@@ -43,6 +43,12 @@ export class ViewerUI {
   private cutlistTouchStartY = 0;
   private isCutlistTouchDragging = false;
 
+  private cutListZoom = 1.0;
+  private cutlistZoomSpacer: HTMLElement | null = null;
+  private isCutlistPinching = false;
+  private cutlistInitialPinchDist = 0;
+  private cutlistInitialPinchZoom = 1.0;
+
   constructor(viewer: Viewer) {
     this.viewer = viewer;
     this.modelLoader = new ModelLoader();
@@ -187,8 +193,18 @@ export class ViewerUI {
       }
     });
 
-    // 材料取り図: スマホ長押しタップ判定 (何もない箇所の長押しタップで選択解除、パーツ長押しで選択)
+    // 材料取り図: スマホピンチイン・アウトおよび長押しタップ判定
     this.cutlistViewContainer.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2) {
+        this.cancelCutlistLongPress();
+        this.isCutlistPinching = true;
+        const t0 = e.touches[0];
+        const t1 = e.touches[1];
+        this.cutlistInitialPinchDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+        this.cutlistInitialPinchZoom = this.cutListZoom;
+        return;
+      }
+
       if (e.touches.length !== 1) {
         this.cancelCutlistLongPress();
         return;
@@ -201,9 +217,27 @@ export class ViewerUI {
       this.cutlistTouchTimer = setTimeout(() => {
         this.completeCutlistLongPress(touch.clientX, touch.clientY);
       }, 500);
-    }, { passive: true });
+    }, { passive: false });
 
     this.cutlistViewContainer.addEventListener('touchmove', (e) => {
+      if (this.isCutlistPinching && e.touches.length === 2) {
+        e.preventDefault();
+        const t0 = e.touches[0];
+        const t1 = e.touches[1];
+        const currentDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+        if (this.cutlistInitialPinchDist > 0) {
+          const factor = currentDist / this.cutlistInitialPinchDist;
+          const centerX = (t0.clientX + t1.clientX) / 2;
+          const centerY = (t0.clientY + t1.clientY) / 2;
+          this.setCutListZoom(this.cutlistInitialPinchZoom * factor, centerX, centerY);
+        }
+        return;
+      }
+
+      if (this.isCutlistPinching && e.touches.length !== 2) {
+        this.isCutlistPinching = false;
+      }
+
       if (!this.cutlistTouchTimer) return;
       if (e.touches.length !== 1) {
         this.cancelCutlistLongPress();
@@ -216,9 +250,12 @@ export class ViewerUI {
         this.isCutlistTouchDragging = true;
         this.cancelCutlistLongPress();
       }
-    }, { passive: true });
+    }, { passive: false });
 
-    this.cutlistViewContainer.addEventListener('touchend', () => {
+    this.cutlistViewContainer.addEventListener('touchend', (e) => {
+      if (e.touches.length < 2) {
+        this.isCutlistPinching = false;
+      }
       this.cancelCutlistLongPress();
       setTimeout(() => {
         this.isCutlistTouchDragging = false;
@@ -226,11 +263,21 @@ export class ViewerUI {
     }, { passive: true });
 
     this.cutlistViewContainer.addEventListener('touchcancel', () => {
+      this.isCutlistPinching = false;
       this.cancelCutlistLongPress();
       setTimeout(() => {
         this.isCutlistTouchDragging = false;
       }, 300);
     }, { passive: true });
+
+    // PC: 材料取り図上での Ctrl＋ホイールスクロール拡大縮小
+    this.cutlistViewContainer.addEventListener('wheel', (e) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        const factor = e.deltaY < 0 ? 1.1 : 0.9;
+        this.setCutListZoom(this.cutListZoom * factor, e.clientX, e.clientY);
+      }
+    }, { passive: false });
   }
 
   private cancelCutlistLongPress(): void {
@@ -259,6 +306,84 @@ export class ViewerUI {
     } else {
       this.layerManager.selectObject(null);
     }
+  }
+
+  /**
+   * 材料取り図の現在のズーム倍率を取得
+   */
+  public getCutListZoom(): number {
+    return this.cutListZoom;
+  }
+
+  /**
+   * 材料取り図のズーム倍率を設定
+   * originClientX, originClientY が指定されている場合はその画面座標を中心にして拡大縮小する
+   */
+  public setCutListZoom(newZoom: number, originClientX?: number, originClientY?: number): void {
+    const clampedZoom = Math.min(Math.max(newZoom, 0.5), 3.5);
+    if (Math.abs(clampedZoom - this.cutListZoom) < 0.001) return;
+
+    const container = this.cutlistViewContainer;
+    const containerRect = container.getBoundingClientRect();
+
+    const originX = originClientX !== undefined
+      ? originClientX - containerRect.left
+      : containerRect.width / 2;
+    const originY = originClientY !== undefined
+      ? originClientY - containerRect.top
+      : containerRect.height / 2;
+
+    const oldZoom = this.cutListZoom;
+    const contentX = (container.scrollLeft + originX) / oldZoom;
+    const contentY = (container.scrollTop + originY) / oldZoom;
+
+    this.cutListZoom = clampedZoom;
+    this.updateCutListZoomLayout();
+
+    const newScrollLeft = contentX * clampedZoom - originX;
+    const newScrollTop = contentY * clampedZoom - originY;
+    container.scrollLeft = Math.max(newScrollLeft, 0);
+    container.scrollTop = Math.max(newScrollTop, 0);
+  }
+
+  /**
+   * ズーム倍率に応じたレイアウトスタイルおよびスクロール領域スペーサーの更新
+   */
+  private updateCutListZoomLayout(): void {
+    if (!this.cutlistSheetsContainer) return;
+
+    this.cutlistSheetsContainer.style.transform = `scale(${this.cutListZoom})`;
+    this.cutlistSheetsContainer.style.transformOrigin = '0 0';
+
+    if (!this.cutlistZoomSpacer) {
+      this.cutlistZoomSpacer = document.createElement('div');
+      this.cutlistZoomSpacer.id = 'cutlist-zoom-spacer';
+      this.cutlistZoomSpacer.style.pointerEvents = 'none';
+      this.cutlistZoomSpacer.style.visibility = 'hidden';
+      this.cutlistViewContainer.appendChild(this.cutlistZoomSpacer);
+    }
+
+    if (this.cutListZoom > 1.0) {
+      const unscaledWidth = this.cutlistSheetsContainer.offsetWidth;
+      const unscaledHeight = this.cutlistSheetsContainer.offsetHeight;
+      this.cutlistZoomSpacer.style.display = 'block';
+      this.cutlistZoomSpacer.style.width = `${Math.round(unscaledWidth * this.cutListZoom)}px`;
+      this.cutlistZoomSpacer.style.height = '1px';
+      this.cutlistZoomSpacer.style.marginTop = `${Math.round(unscaledHeight * (this.cutListZoom - 1.0))}px`;
+    } else {
+      this.cutlistZoomSpacer.style.display = 'none';
+      this.cutlistZoomSpacer.style.width = '0px';
+      this.cutlistZoomSpacer.style.height = '0px';
+      this.cutlistZoomSpacer.style.marginTop = '0px';
+    }
+  }
+
+  /**
+   * 材料取り図のズーム倍率を等倍(1.0)にリセット
+   */
+  public resetCutListZoom(): void {
+    this.cutListZoom = 1.0;
+    this.updateCutListZoomLayout();
   }
 
   private initViewModeEvents(): void {
@@ -323,6 +448,7 @@ export class ViewerUI {
   }
 
   private renderCutListView(): void {
+    this.resetCutListZoom();
     const sheets = this.cutListCalculator.calculate(
       this.currentData?.cutList,
       this.currentData?.objects
@@ -902,10 +1028,11 @@ export class ViewerUI {
       false
     );
 
-    const marginL = 70 * scale;
-    const marginT = 10 * scale;
-    const marginR = 20 * scale;
-    const marginB = 80 * scale;
+    // 文字が見切れないように十分なマージンを確保
+    const marginL = Math.max(85 * scale, 65);
+    const marginT = Math.max(45 * scale, 35);
+    const marginR = Math.max(65 * scale, 50);
+    const marginB = Math.max(90 * scale, 70);
 
     return `
       <svg viewBox="-${marginL} -${marginT} ${svgWidth + marginL + marginR} ${svgHeight + marginT + marginB}" class="cutplan-svg-canvas" preserveAspectRatio="xMidYMid meet">
@@ -1104,10 +1231,11 @@ export class ViewerUI {
       false
     );
 
-    const marginL = 70 * scale;
-    const marginT = 10 * scale;
-    const marginR = 20 * scale;
-    const marginB = 80 * scale;
+    // 文字が見切れないように十分なマージンを確保
+    const marginL = Math.max(85 * scale, 65);
+    const marginT = Math.max(45 * scale, 35);
+    const marginR = Math.max(65 * scale, 50);
+    const marginB = Math.max(90 * scale, 70);
 
     return `
       <svg viewBox="-${marginL} -${marginT} ${boardWidth + marginL + marginR} ${boardHeight + marginT + marginB}" class="cutplan-svg-canvas" preserveAspectRatio="xMidYMid meet">
