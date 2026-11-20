@@ -129,6 +129,7 @@
 - `unitPrice`: 原木単価（円）。
 - `specificGravity`: 比重。
 - `remarks`: 備考。
+- `roundEdgeCuts`: 円柱両端の円形エッジに対する面取り・角丸め加工配列（`EdgeCut[]`。通常 `edgeIndex: 0` が上端、`edgeIndex: 1` が下端）。
 
 #### 3. `picture` (画像・参考写真)
 3D空間上に配置される下絵・設計参考写真・テクスチャボードです。
@@ -140,13 +141,20 @@
 - `dispPattern`: 表示パターンフラグ（`0`: 片面表示, `1`: 両面表示）。
 - `contentRotation`: 画像の時計回り回転角度（`0, 90, 180, 270`）。
 
-#### 4. `boolean` (ブーリアン加工パーツ)
+#### 4. `boolean` (ブーリアン加工パーツ - レガシー/旧仕様互換)
 切削・差分・結合加工が行われた立体パーツです。
 - `vertices`: 加工後の頂点リスト (`Vector3[]` または数値配列)。
 - `faces`: 加工後の面構成データ (`PolygonFace[]` または数値配列)。
 - `sourceMaterials`: 加工元の母材定義（`type`, `standardSize`, `color`, `commentText`, `specificGravity`, `textureId`）。
 
-#### 5. `screw` (ビス・木ネジ・接合金具)
+#### 5. `merged` (ブーリアン結合・差分パーツ - V4ネイティブ)
+caDIY3D V4 のブーリアン演算（結合・切り欠き・差分・交差）により生成される複合メッシュパーツです。MCP の `boolean_objects` やデスクトップアプリのブーリアン加工で生成されます。
+- `operation`: ブーリアン演算種別（`"union"`: 結合, `"difference"`: 切り欠き/差分, `"intersection"`: 交差）。
+- `originalModels`: 結合前の構成パーツ一覧（`SceneObject[]`）。分割（`unboolean_objects`）時にこれらの元パーツが復元されます。
+- `baseMaterialIndex`: `originalModels` 内で母材（ベース）となるパーツのインデックス（通常 `0`）。色やテクスチャ、材料規格情報が引き継がれます。
+- `mergedGeometry`: 加工後の合成3Dジオメトリ。内部の `meshGeometry` に Three.js の `BufferGeometry.toJSON()` 形式（Three.js `BufferGeometryLoader` でそのまま復元可能な頂点・法線データ）が格納されます。
+
+#### 6. `screw` (ビス・木ネジ・接合金具)
 木材同士を接合するためのコーススレッドやビスです。
 - `diameterIndex`: ビスの呼び径インデックス（例: `6`=3.8mm, `8`=4.2mm）。
 - `screwLength`: ネジの長さ [m]（例: `0.04`=40mm）。

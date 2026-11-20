@@ -258,6 +258,84 @@
         }
       }
     },
+    "BufferGeometryAttribute": {
+      "type": "object",
+      "description": "BufferAttribute data for Three.js BufferGeometry (e.g. position, normal, uv).",
+      "required": ["itemSize", "type", "array"],
+      "properties": {
+        "itemSize": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of components per vertex (e.g. 3 for position/normal, 2 for uv)."
+        },
+        "type": {
+          "type": "string",
+          "description": "Array typed array type name (e.g. 'Float32Array')."
+        },
+        "array": {
+          "type": "array",
+          "description": "Flat array of numeric coordinates.",
+          "items": { "type": "number" }
+        },
+        "normalized": {
+          "type": "boolean",
+          "description": "Whether the buffer attribute is normalized."
+        }
+      }
+    },
+    "ThreeBufferGeometry": {
+      "type": "object",
+      "description": "Three.js BufferGeometry serialized to JSON via BufferGeometry.toJSON().",
+      "required": ["metadata", "type", "data"],
+      "properties": {
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "version": { "type": "number" },
+            "type": { "type": "string" },
+            "generator": { "type": "string" }
+          }
+        },
+        "uuid": { "type": "string" },
+        "type": { "type": "string", "enum": ["BufferGeometry"] },
+        "name": { "type": "string" },
+        "data": {
+          "type": "object",
+          "required": ["attributes"],
+          "properties": {
+            "attributes": {
+              "type": "object",
+              "required": ["position"],
+              "properties": {
+                "position": { "$ref": "#/definitions/BufferGeometryAttribute" },
+                "normal": { "$ref": "#/definitions/BufferGeometryAttribute" },
+                "uv": { "$ref": "#/definitions/BufferGeometryAttribute" }
+              },
+              "additionalProperties": {
+                "$ref": "#/definitions/BufferGeometryAttribute"
+              }
+            },
+            "index": {
+              "type": "object",
+              "properties": {
+                "type": { "type": "string" },
+                "array": { "type": "array", "items": { "type": "integer" } }
+              }
+            }
+          }
+        }
+      }
+    },
+    "MergedGeometry": {
+      "type": "object",
+      "description": "3D geometry definition container for merged/boolean parts.",
+      "required": ["meshGeometry"],
+      "properties": {
+        "meshGeometry": {
+          "$ref": "#/definitions/ThreeBufferGeometry"
+        }
+      }
+    },
     "SourceMaterial": {
       "type": "object",
       "description": "Origin stock material specifications preserved before boolean operations.",
@@ -544,6 +622,7 @@
             "polygon",
             "picture",
             "boolean",
+            "merged",
             "screw",
             "steelProfile"
           ]
@@ -574,6 +653,13 @@
         "edgeCuts": {
           "type": "array",
           "description": "List of edge cut/chamfer processing operations applied to the part (形状加工).",
+          "items": {
+            "$ref": "#/definitions/EdgeCut"
+          }
+        },
+        "roundEdgeCuts": {
+          "type": "array",
+          "description": "List of edge chamfer/rounding cut processing operations applied to circular edges of cylinder parts (typically edgeIndex 0 and 1 for top/bottom ends).",
           "items": {
             "$ref": "#/definitions/EdgeCut"
           }
@@ -805,6 +891,26 @@
         "material": {
           "type": "string",
           "description": "Raw material material (e.g. 'steel', 'alumi', 'stainless')."
+        },
+        "operation": {
+          "type": "string",
+          "description": "Boolean CSG operation type applied to create this merged object ('union', 'difference', 'intersection').",
+          "enum": ["union", "difference", "intersection"]
+        },
+        "originalModels": {
+          "type": "array",
+          "description": "Original constituent scene objects that formed this merged object (used for unboolean/splitting operations).",
+          "items": {
+            "$ref": "#/definitions/SceneObject"
+          }
+        },
+        "baseMaterialIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "0-based index within originalModels identifying the primary base part for material properties (color, texture, pricing)."
+        },
+        "mergedGeometry": {
+          "$ref": "#/definitions/MergedGeometry"
         }
       }
     }

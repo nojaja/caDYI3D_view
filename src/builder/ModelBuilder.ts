@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CadiyObject, LumberObject, BoardObject, CylinderObject, DimensionObject, TextBoardObject, PictureObject, PictureImageItem, TubeObject, CommentObject, PolygonObject, BooleanObject, PolygonMeshItem, PolygonMesh, PaintSnapshot, PaintItem, ColorRGB } from '../types/cadiy4';
+import { CadiyObject, LumberObject, BoardObject, CylinderObject, DimensionObject, TextBoardObject, PictureObject, PictureImageItem, TubeObject, CommentObject, PolygonObject, BooleanObject, MergedObject, PolygonMeshItem, PolygonMesh, PaintSnapshot, PaintItem, ColorRGB } from '../types/cadiy4';
 import { MaterialFactory } from './MaterialFactory';
 import { TextBoardBuilder } from './TextBoardBuilder';
 import { DimensionBuilder } from './DimensionBuilder';
@@ -170,6 +170,9 @@ export class ModelBuilder {
       case 'boolean':
         geometry = this.createBooleanGeometry(obj as BooleanObject);
         break;
+      case 'merged':
+        geometry = this.createMergedGeometry(obj as MergedObject);
+        break;
       default:
         geometry = new THREE.BoxGeometry(obj.size.x, obj.size.y, obj.size.z);
         break;
@@ -238,6 +241,28 @@ export class ModelBuilder {
         geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
         geometry.computeVertexNormals();
         return geometry;
+      }
+    }
+
+    return new THREE.BoxGeometry(obj.size.x, obj.size.y, obj.size.z);
+  }
+
+  /**
+   * ブーリアン結合・差分パーツ (merged) のメッシュジオメトリを構築
+   */
+  private createMergedGeometry(obj: MergedObject): THREE.BufferGeometry {
+    if (obj.mergedGeometry && obj.mergedGeometry.meshGeometry) {
+      try {
+        const loader = new THREE.BufferGeometryLoader();
+        const geometry = loader.parse(obj.mergedGeometry.meshGeometry);
+        if (geometry && geometry.getAttribute('position') && geometry.getAttribute('position').count > 0) {
+          if (!geometry.getAttribute('normal')) {
+            geometry.computeVertexNormals();
+          }
+          return geometry;
+        }
+      } catch (err) {
+        console.warn(`[ModelBuilder] Failed to parse mergedGeometry for object ${obj.id}:`, err);
       }
     }
 

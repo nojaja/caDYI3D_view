@@ -153,6 +153,7 @@ export interface CylinderObject extends CadiyObjectBase {
   unitPrice?: number;
   specificGravity?: number;
   legacyStandardSize?: Vector3;
+  roundEdgeCuts?: EdgeCut[];
 }
 
 export interface DimensionObject extends CadiyObjectBase {
@@ -248,6 +249,16 @@ export interface BooleanObject extends CadiyObjectBase {
   sourceMaterials?: SourceMaterial[];
 }
 
+export interface MergedObject extends CadiyObjectBase {
+  type: 'merged';
+  operation?: 'union' | 'difference' | 'intersection' | string;
+  originalModels?: CadiyObject[];
+  baseMaterialIndex?: number;
+  mergedGeometry?: {
+    meshGeometry?: any;
+  };
+}
+
 export interface ScrewObject extends CadiyObjectBase {
   type: 'screw';
   diameterIndex?: number;
@@ -284,6 +295,7 @@ export type CadiyObject =
   | PolygonObject
   | PictureObject
   | BooleanObject
+  | MergedObject
   | ScrewObject
   | SteelProfileObject
   | CadiyObjectBase;

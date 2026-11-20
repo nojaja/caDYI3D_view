@@ -738,4 +738,48 @@ describe('ModelBuilder', () => {
     expect(barMat.color.g).toBeCloseTo(expectedColor.g);
     expect(barMat.color.b).toBeCloseTo(expectedColor.b);
   });
+
+  it('merged-boolean-sample.cadiy4 の merged オブジェクト (union / difference) が BufferGeometry として正しくメッシュ生成されること', () => {
+    const filePath = path.resolve(__dirname, '../data/merged-boolean-sample.cadiy4');
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const parser = new Cadiy4Parser();
+    const data = parser.parse(content);
+
+    const builder = new ModelBuilder();
+    const group = builder.build(data.objects);
+
+    expect(group.children.length).toBe(data.objects.length);
+
+    // 1. union (テスト結合材（結合）) の検証
+    const unionObj = data.objects.find(o => o.id === 'merged-union-test-1')!;
+    expect(unionObj).toBeDefined();
+    expect(unionObj.type).toBe('merged');
+
+    const unionMesh = group.children.find(c => c.userData.id === unionObj.id) as THREE.Mesh;
+    expect(unionMesh).toBeDefined();
+    expect(unionMesh.geometry).toBeInstanceOf(THREE.BufferGeometry);
+    // BoxGeometry の頂点数(24 or 36)ではなく、マージされた合成ジオメトリの頂点数(72)であること
+    expect(unionMesh.geometry.getAttribute('position').count).toBe(72);
+    expect(unionMesh.position.x).toBeCloseTo(unionObj.position.x);
+    expect(unionMesh.position.y).toBeCloseTo(unionObj.position.y);
+    expect(unionMesh.position.z).toBeCloseTo(unionObj.position.z);
+
+    // 2. difference (テスト木材（切り欠き）) の検証
+    const diffObj = data.objects.find(o => o.id === 'merged-diff-test-2')!;
+    expect(diffObj).toBeDefined();
+    expect(diffObj.type).toBe('merged');
+
+    const diffMesh = group.children.find(c => c.userData.id === diffObj.id) as THREE.Mesh;
+    expect(diffMesh).toBeDefined();
+    expect(diffMesh.geometry).toBeInstanceOf(THREE.BufferGeometry);
+    expect(diffMesh.geometry.getAttribute('position').count).toBeGreaterThan(0);
+    expect(diffMesh.position.x).toBeCloseTo(diffObj.position.x);
+
+    // 3. cylinder (テスト丸棒（面取り）) の検証
+    const cylObj = data.objects.find(o => o.id === 'test-cylinder-chamfered')!;
+    expect(cylObj).toBeDefined();
+    const cylMesh = group.children.find(c => c.userData.id === cylObj.id) as THREE.Mesh;
+    expect(cylMesh).toBeDefined();
+    expect(cylMesh.geometry).toBeInstanceOf(THREE.BufferGeometry);
+  });
 });
