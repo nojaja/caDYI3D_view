@@ -75,7 +75,7 @@ export class ModelBuilder {
         return paint.color;
       }
     }
-    return obj.color;
+    return obj.color || { r: 0.8, g: 0.8, b: 0.8 };
   }
 
   /**

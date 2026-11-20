@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { Viewer } from '../core/Viewer';
 import { ModelLoader } from '../loader/ModelLoader';
 import { CadiyObject, Cadiy4Data } from '../types/cadiy4';
@@ -335,15 +336,64 @@ export class ViewerUI {
       return;
     }
 
-    sheets.forEach((sheet, index) => {
+    // 同一材料（規格）ごとにグループ化して表示
+    interface MaterialSheetGroup {
+      materialTitle: string;
+      layout: '1d' | '2d';
+      sheets: CutPlanSheet[];
+    }
+    const groupMap = new Map<string, MaterialSheetGroup>();
+    const groupList: MaterialSheetGroup[] = [];
+
+    for (const sheet of sheets) {
+      const repObj = sheet.items[0]?.object;
+      let sizeStr = '';
       if (sheet.layout === '2d') {
-        const sheetEl = this.render2DSheet(sheet, index);
-        this.cutlistSheetsContainer.appendChild(sheetEl);
+        const thick = repObj?.size.y ? (repObj.size.y * 1000).toFixed(1).replace(/\.0$/, '') : '';
+        sizeStr = thick ? `${sheet.sheetWidthMm}×${thick} mm` : `${sheet.sheetWidthMm} mm`;
       } else {
-        const sheetEl = this.render1DSheet(sheet, index);
-        this.cutlistSheetsContainer.appendChild(sheetEl);
+        const thick = repObj?.size.y ? Math.round(repObj.size.y * 1000) : 38;
+        sizeStr = `${sheet.sheetWidthMm}×${thick} mm`;
       }
-    });
+
+      const matTitle = `${sheet.lumberName} (${sizeStr})`;
+      const key = `${sheet.layout}___${matTitle}`;
+
+      if (!groupMap.has(key)) {
+        const group: MaterialSheetGroup = {
+          materialTitle: matTitle,
+          layout: sheet.layout,
+          sheets: [],
+        };
+        groupMap.set(key, group);
+        groupList.push(group);
+      }
+      groupMap.get(key)!.sheets.push(sheet);
+    }
+
+    let globalSheetIndex = 0;
+    for (const group of groupList) {
+      const groupEl = document.createElement('div');
+      groupEl.className = 'cutplan-material-group';
+
+      const titleEl = document.createElement('div');
+      titleEl.className = 'cutplan-material-title';
+      titleEl.textContent = group.materialTitle;
+      groupEl.appendChild(titleEl);
+
+      const sheetsContainer = document.createElement('div');
+      sheetsContainer.className = 'cutplan-material-sheets';
+
+      for (const sheet of group.sheets) {
+        const sheetEl = sheet.layout === '2d'
+          ? this.render2DSheet(sheet, globalSheetIndex++)
+          : this.render1DSheet(sheet, globalSheetIndex++);
+        sheetsContainer.appendChild(sheetEl);
+      }
+
+      groupEl.appendChild(sheetsContainer);
+      this.cutlistSheetsContainer.appendChild(groupEl);
+    }
 
     // レンダリング後に画面サイズに合わせてフォントサイズを動的調整
     this.updateCutPlanFontSizes();
@@ -498,11 +548,116 @@ export class ViewerUI {
    * 有効桁数は小数点第2位まで
    */
   public static getPartLabelInfo(item: CutPlanItem, is2D: boolean = false): { partName: string; sizeText: string } {
-    const partName = item.object.partName || item.object.name;
+    const isProcessed = item.object.type === 'boolean' || item.object.type === 'merged';
+    const suffix = isProcessed ? ' ✂[加工あり]' : '';
+    const partName = (item.object.partName || item.object.name) + suffix;
     const sizeText = is2D
       ? `${ViewerUI.formatCutPlanSize(item.widthMm)} × ${ViewerUI.formatCutPlanSize(item.lengthMm)}`
       : `${ViewerUI.formatCutPlanSize(item.lengthMm)}`;
     return { partName, sizeText };
+  }
+
+  /**
+   * ブーリアンまたは複合メッシュパーツから、木取り図（ZX平面投影）に描画すべき
+   * 加工エッジ線（切り欠き、溝、面取り線、穴など）を抽出する
+   */
+  public static extractProcessedShapeLines(
+    obj: CadiyObject,
+    curX: number,
+    pw: number,
+    boardHeight: number
+  ): Array<{ x1: number; y1: number; x2: number; y2: number }> {
+    const anyObj = obj as any;
+    if (!anyObj.vertices || !anyObj.faces || !Array.isArray(anyObj.faces) || anyObj.faces.length === 0) {
+      return [];
+    }
+
+    const vertices: Array<{ x: number; y: number; z: number }> = anyObj.vertices;
+    if (vertices.length === 0) return [];
+
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+    let minZ = Infinity, maxZ = -Infinity;
+    for (const v of vertices) {
+      if (typeof v.x !== 'number') continue;
+      if (v.x < minX) minX = v.x; if (v.x > maxX) maxX = v.x;
+      if (v.y < minY) minY = v.y; if (v.y > maxY) maxY = v.y;
+      if (v.z < minZ) minZ = v.z; if (v.z > maxZ) maxZ = v.z;
+    }
+    const spans = [
+      { span: maxX - minX, min: minX, get: (x: number, _y: number, _z: number) => x },
+      { span: maxY - minY, min: minY, get: (_x: number, y: number, _z: number) => y },
+      { span: maxZ - minZ, min: minZ, get: (_x: number, _y: number, z: number) => z },
+    ];
+    spans.sort((a, b) => b.span - a.span);
+    const lenAxis = spans[0];
+    const widthAxis = spans[1];
+    if (lenAxis.span <= 0.0001 || widthAxis.span <= 0.0001) return [];
+
+    const positions: number[] = [];
+    for (const f of anyObj.faces) {
+      const idx = f.indices;
+      if (!idx || idx.length < 3) continue;
+      for (let t = 0; t < idx.length - 2; t++) {
+        const v0 = vertices[idx[0]];
+        const v1 = vertices[idx[t + 1]];
+        const v2 = vertices[idx[t + 2]];
+        if (!v0 || !v1 || !v2) continue;
+        positions.push(v0.x, v0.y, v0.z, v1.x, v1.y, v1.z, v2.x, v2.y, v2.z);
+      }
+    }
+    if (positions.length === 0) return [];
+
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geom.computeVertexNormals();
+
+    const edgesGeom = new THREE.EdgesGeometry(geom, 15);
+    const posAttr = edgesGeom.attributes.position;
+    if (!posAttr) return [];
+
+    const lines: Array<{ x1: number; y1: number; x2: number; y2: number }> = [];
+    const seen = new Set<string>();
+
+    for (let i = 0; i < posAttr.count; i += 2) {
+      const p1x = posAttr.getX(i), p1y = posAttr.getY(i), p1z = posAttr.getZ(i);
+      const p2x = posAttr.getX(i + 1), p2y = posAttr.getY(i + 1), p2z = posAttr.getZ(i + 1);
+
+      // caDYI3Dの木取り図投影面（表側視点）に合わせて長さ方向(u)を反転
+      const u1 = 1 - (lenAxis.get(p1x, p1y, p1z) - lenAxis.min) / lenAxis.span;
+      const v1 = (widthAxis.get(p1x, p1y, p1z) - widthAxis.min) / widthAxis.span;
+      const u2 = 1 - (lenAxis.get(p2x, p2y, p2z) - lenAxis.min) / lenAxis.span;
+      const v2 = (widthAxis.get(p2x, p2y, p2z) - widthAxis.min) / widthAxis.span;
+
+      const dist = Math.hypot(u2 - u1, v2 - v1);
+      if (dist < 0.002) continue;
+
+      const isBoundaryEdge =
+        (Math.abs(v1) < 0.002 && Math.abs(v2) < 0.002) ||
+        (Math.abs(v1 - 1) < 0.002 && Math.abs(v2 - 1) < 0.002) ||
+        (Math.abs(u1) < 0.002 && Math.abs(u2) < 0.002) ||
+        (Math.abs(u1 - 1) < 0.002 && Math.abs(u2 - 1) < 0.002);
+      const isDiagonal = Math.abs(u1 - u2) > 0.002 && Math.abs(v1 - v2) > 0.002;
+      if (isBoundaryEdge && !isDiagonal) {
+        continue;
+      }
+
+      const x1 = curX + u1 * pw;
+      const y1 = v1 * boardHeight;
+      const x2 = curX + u2 * pw;
+      const y2 = v2 * boardHeight;
+
+      const k1 = `${Math.round(x1 * 5)}_${Math.round(y1 * 5)}_${Math.round(x2 * 5)}_${Math.round(y2 * 5)}`;
+      const k2 = `${Math.round(x2 * 5)}_${Math.round(y2 * 5)}_${Math.round(x1 * 5)}_${Math.round(y1 * 5)}`;
+      if (seen.has(k1) || seen.has(k2)) continue;
+      seen.add(k1);
+
+      lines.push({ x1, y1, x2, y2 });
+    }
+
+    geom.dispose();
+    edgesGeom.dispose();
+    return lines;
   }
 
   /**
@@ -517,7 +672,8 @@ export class ViewerUI {
     cutA: number,
     cutB: number,
     fsText: number,
-    isTopCorner: boolean
+    isTopCorner: boolean,
+    labelPrefix: string = '斜めカット'
   ): string {
     // 常に左から右へ向かうベクトルに正規化して文字が反転しないようにする
     let sx1 = x1, sy1 = y1, sx2 = x2, sy2 = y2;
@@ -532,7 +688,7 @@ export class ViewerUI {
     // 上側コーナーは線の外側(上)に-0.4em、下側コーナーは線の外側(下)に1.2emオフセット
     const dyAttr = isTopCorner ? '-0.4em' : '1.2em';
 
-    return `<text x="${midX.toFixed(1)}" y="${midY.toFixed(1)}" transform="rotate(${angleDeg.toFixed(1)}, ${midX.toFixed(1)}, ${midY.toFixed(1)})" dy="${dyAttr}" class="cutplan-diag-cut-label" font-size="${fsText}" font-weight="bold" fill="#b91c1c" text-anchor="middle" pointer-events="none" style="pointer-events: none;">✂ 斜めカット: ${ViewerUI.formatCutPlanSize(cutA)} × ${ViewerUI.formatCutPlanSize(cutB)}</text>`;
+    return `<text x="${midX.toFixed(1)}" y="${midY.toFixed(1)}" transform="rotate(${angleDeg.toFixed(1)}, ${midX.toFixed(1)}, ${midY.toFixed(1)})" dy="${dyAttr}" class="cutplan-diag-cut-label" font-size="${fsText}" font-weight="bold" fill="#b91c1c" text-anchor="middle" pointer-events="none" style="pointer-events: none;">✂ ${labelPrefix}: ${ViewerUI.formatCutPlanSize(cutA)} × ${ViewerUI.formatCutPlanSize(cutB)}</text>`;
   }
 
   /**
@@ -569,7 +725,7 @@ export class ViewerUI {
       const ph = item.widthMm;
 
       const edgeCuts = item.edgeCuts || [];
-      const cutCuts = edgeCuts.filter((c: any) => c.mode === 'cut');
+      const cutCuts = edgeCuts.filter((c: any) => c.mode === 'cut' || c.mode === 'chamfer45');
       const cut7 = cutCuts.find((c: any) => c.edgeIndex === 7);
       const cut4 = cutCuts.find((c: any) => c.edgeIndex === 4);
       const cut5 = cutCuts.find((c: any) => c.edgeIndex === 5);
@@ -794,71 +950,115 @@ export class ViewerUI {
       const pw = item.lengthMm;
       const { partName, sizeText } = ViewerUI.getPartLabelInfo(item, false);
 
-      // パーツ本体および斜めカット (edgeCuts) の反映
+      // パーツ本体およびエッジ加工・斜めカット (edgeCuts) の反映
       const edgeCuts = item.edgeCuts || [];
-      const cutCuts = edgeCuts.filter((c: any) => c.mode === 'cut');
-      const cut6 = cutCuts.find((c: any) => c.edgeIndex === 6);
-      const cut4 = cutCuts.find((c: any) => c.edgeIndex === 4);
-      const cut7 = cutCuts.find((c: any) => c.edgeIndex === 7);
-      const cut5 = cutCuts.find((c: any) => c.edgeIndex === 5);
+      const cutCuts = edgeCuts.filter((c: any) => c.mode === 'cut' || c.mode === 'chamfer45');
+      const cut6 = cutCuts.find((c: any) => c.edgeIndex === 6); // 手前左 (Z+, Y-) -> 右上
+      const cut4 = cutCuts.find((c: any) => c.edgeIndex === 4); // 手前右 (Z+, Y+) -> 右下
+      const cut7 = cutCuts.find((c: any) => c.edgeIndex === 7); // 奥左   (Z-, Y-) -> 左上
+      const cut5 = cutCuts.find((c: any) => c.edgeIndex === 5); // 奥右   (Z-, Y+) -> 左下
 
-      if (cut6 || cut4) {
-        // 右端 (+Z 端) の斜めカット (側板上端斜めカット等)
-        const cut = (cut6 || cut4)!;
-        const cutA = cut.faceADist * 1000;
-        const cutB = cut.faceBDist * 1000;
+      const hasCuts = cut6 || cut4 || cut7 || cut5;
 
-        const polyPoints = [
-          `${curX},0`,
-          `${curX + pw - cutB},0`,
-          `${curX + pw},${boardHeight}`,
-          `${curX},${boardHeight}`,
-        ].join(' ');
+      if (hasCuts) {
+        // 多角形（ポリゴン）としてパーツ輪郭および各コーナーのカットを描画
+        const getCutDims = (cut?: any) => {
+          if (!cut) return { dx: 0, dy: 0, isChamfer: false, rawA: 0, rawB: 0 };
+          const rawA = cut.faceADist * 1000;
+          const rawB = cut.faceBDist * 1000;
+          const isChamfer = cut.mode === 'chamfer45' || rawA < actualThick * 0.8;
+          const dy = isChamfer
+            ? Math.max((rawA / actualThick) * boardHeight, 14 * scale)
+            : boardHeight;
+          const dx = isChamfer
+            ? Math.max(rawB, 14 * scale)
+            : rawB;
+          return { dx, dy, isChamfer, rawA, rawB };
+        };
 
-        const scrapPoints = [
-          `${curX + pw - cutB},0`,
-          `${curX + pw},0`,
-          `${curX + pw},${boardHeight}`,
-        ].join(' ');
+        const c7 = getCutDims(cut7);
+        const c6 = getCutDims(cut6);
+        const c4 = getCutDims(cut4);
+        const c5 = getCutDims(cut5);
 
-        svgInner += `<polygon points="${scrapPoints}" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,4" />`;
-        svgInner += `<polygon points="${polyPoints}" class="cutplan-svg-part" data-object-id="${item.object.id}" fill="#fde68a" stroke="#d97706" stroke-width="2" />`;
-        svgInner += `<line x1="${curX + pw - cutB}" y1="0" x2="${curX + pw}" y2="${boardHeight}" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2.5" pointer-events="none" style="pointer-events: none;" />`;
-        svgInner += ViewerUI.renderDiagonalCutLabel(
-          curX + pw - cutB, 0,
-          curX + pw, boardHeight,
-          cutA, cutB, fsText, true
-        );
-      } else if (cut7 || cut5) {
-        // 左端 (-Z 端) の斜めカット
-        const cut = (cut7 || cut5)!;
-        const cutA = cut.faceADist * 1000;
-        const cutB = cut.faceBDist * 1000;
+        // 時計回りにポリゴン頂点を追加
+        const polyPoints: string[] = [];
 
-        const polyPoints = [
-          `${curX + cutB},0`,
-          `${curX + pw},0`,
-          `${curX + pw},${boardHeight}`,
-          `${curX},${boardHeight}`,
-        ].join(' ');
+        // 1. 左上コーナー
+        if (cut7) {
+          polyPoints.push(`${curX},${c7.dy}`);
+          polyPoints.push(`${curX + c7.dx},0`);
+        } else {
+          polyPoints.push(`${curX},0`);
+        }
 
-        const scrapPoints = [
-          `${curX},0`,
-          `${curX + cutB},0`,
-          `${curX},${boardHeight}`,
-        ].join(' ');
+        // 2. 右上コーナー
+        if (cut6) {
+          polyPoints.push(`${curX + pw - c6.dx},0`);
+          polyPoints.push(`${curX + pw},${c6.dy}`);
+        } else {
+          polyPoints.push(`${curX + pw},0`);
+        }
 
-        svgInner += `<polygon points="${scrapPoints}" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,4" />`;
-        svgInner += `<polygon points="${polyPoints}" class="cutplan-svg-part" data-object-id="${item.object.id}" fill="#fde68a" stroke="#d97706" stroke-width="2" />`;
-        svgInner += `<line x1="${curX}" y1="${boardHeight}" x2="${curX + cutB}" y2="0" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2.5" pointer-events="none" style="pointer-events: none;" />`;
-        svgInner += ViewerUI.renderDiagonalCutLabel(
-          curX, boardHeight,
-          curX + cutB, 0,
-          cutA, cutB, fsText, true
-        );
+        // 3. 右下コーナー
+        if (cut4) {
+          polyPoints.push(`${curX + pw},${boardHeight - c4.dy}`);
+          polyPoints.push(`${curX + pw - c4.dx},${boardHeight}`);
+        } else {
+          polyPoints.push(`${curX + pw},${boardHeight}`);
+        }
+
+        // 4. 左下コーナー
+        if (cut5) {
+          polyPoints.push(`${curX + c5.dx},${boardHeight}`);
+          polyPoints.push(`${curX},${boardHeight - c5.dy}`);
+        } else {
+          polyPoints.push(`${curX},${boardHeight}`);
+        }
+
+        // 切り落とし領域（スクラップ）および切断線、ラベルを描画
+        // 左上 (cut7)
+        if (cut7) {
+          const scrap = [`${curX},0`, `${curX + c7.dx},0`, `${curX},${c7.dy}`].join(' ');
+          svgInner += `<polygon points="${scrap}" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,4" />`;
+          svgInner += `<line x1="${curX}" y1="${c7.dy}" x2="${curX + c7.dx}" y2="0" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2.5" pointer-events="none" style="pointer-events: none;" />`;
+          svgInner += ViewerUI.renderDiagonalCutLabel(curX, c7.dy, curX + c7.dx, 0, c7.rawA, c7.rawB, fsText, true, c7.isChamfer ? '面取り' : '斜めカット');
+        }
+        // 右上 (cut6)
+        if (cut6) {
+          const scrap = [`${curX + pw - c6.dx},0`, `${curX + pw},0`, `${curX + pw},${c6.dy}`].join(' ');
+          svgInner += `<polygon points="${scrap}" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,4" />`;
+          svgInner += `<line x1="${curX + pw - c6.dx}" y1="0" x2="${curX + pw}" y2="${c6.dy}" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2.5" pointer-events="none" style="pointer-events: none;" />`;
+          svgInner += ViewerUI.renderDiagonalCutLabel(curX + pw - c6.dx, 0, curX + pw, c6.dy, c6.rawA, c6.rawB, fsText, true, c6.isChamfer ? '面取り' : '斜めカット');
+        }
+        // 右下 (cut4)
+        if (cut4) {
+          const scrap = [`${curX + pw},${boardHeight - c4.dy}`, `${curX + pw},${boardHeight}`, `${curX + pw - c4.dx},${boardHeight}`].join(' ');
+          svgInner += `<polygon points="${scrap}" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,4" />`;
+          svgInner += `<line x1="${curX + pw - c4.dx}" y1="${boardHeight}" x2="${curX + pw}" y2="${boardHeight - c4.dy}" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2.5" pointer-events="none" style="pointer-events: none;" />`;
+          svgInner += ViewerUI.renderDiagonalCutLabel(curX + pw - c4.dx, boardHeight, curX + pw, boardHeight - c4.dy, c4.rawA, c4.rawB, fsText, false, c4.isChamfer ? '面取り' : '斜めカット');
+        }
+        // 左下 (cut5)
+        if (cut5) {
+          const scrap = [`${curX},${boardHeight - c5.dy}`, `${curX},${boardHeight}`, `${curX + c5.dx},${boardHeight}`].join(' ');
+          svgInner += `<polygon points="${scrap}" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,4" />`;
+          svgInner += `<line x1="${curX}" y1="${boardHeight - c5.dy}" x2="${curX + c5.dx}" y2="${boardHeight}" class="cutplan-kerf-line" stroke="#dc2626" stroke-width="2.5" pointer-events="none" style="pointer-events: none;" />`;
+          svgInner += ViewerUI.renderDiagonalCutLabel(curX, boardHeight - c5.dy, curX + c5.dx, boardHeight, c5.rawA, c5.rawB, fsText, false, c5.isChamfer ? '面取り' : '斜めカット');
+        }
+
+        // パーツ本体のポリゴン
+        svgInner += `<polygon points="${polyPoints.join(' ')}" class="cutplan-svg-part" data-object-id="${item.object.id}" fill="#fde68a" stroke="#d97706" stroke-width="2" />`;
       } else {
         // 通常パーツ
         svgInner += `<rect x="${curX}" y="0" width="${pw}" height="${boardHeight}" class="cutplan-svg-part" data-object-id="${item.object.id}" fill="#fde68a" stroke="#d97706" stroke-width="2" rx="0" />`;
+      }
+
+      // 内部の加工形状エッジ線（切り欠き、溝、面取り線、穴など）を描画
+      const shapeLines = ViewerUI.extractProcessedShapeLines(item.object, curX, pw, boardHeight);
+      if (shapeLines.length > 0) {
+        for (const l of shapeLines) {
+          svgInner += `<line x1="${l.x1.toFixed(1)}" y1="${l.y1.toFixed(1)}" x2="${l.x2.toFixed(1)}" y2="${l.y2.toFixed(1)}" stroke="#334155" stroke-width="1.5" stroke-linecap="round" class="cutplan-feature-edge" pointer-events="none" style="pointer-events: none;" />`;
+        }
       }
 
       // パーツラベル & サイズ (cutplan-part-size はパーツの上下中央 boardHeight / 2 に配置)
@@ -935,12 +1135,25 @@ export class ViewerUI {
       <span>使用長: ${sheet.usedLengthMm.toFixed(0)}mm / 端材: ${sheet.remainingLengthMm.toFixed(0)}mm <span class="cutplan-yield">(歩留まり: ${sheet.yieldRatePercent.toFixed(1)}%)</span></span>
     `;
 
+    const row = document.createElement('div');
+    row.className = 'cutplan-sheet-row';
+
     const main = document.createElement('div');
     main.className = 'cutplan-canvas-main';
     main.innerHTML = ViewerUI.render1DSheetSvg(sheet);
 
+    const summary = document.createElement('div');
+    summary.className = 'cutplan-sheet-summary';
+    summary.innerHTML = `
+      <div class="cutplan-summary-length">${totalLen.toFixed(0)} mm</div>
+      <div class="cutplan-summary-remaining">残り ${sheet.remainingLengthMm.toFixed(0)} mm</div>
+    `;
+
+    row.appendChild(main);
+    row.appendChild(summary);
+
     sheetEl.appendChild(header);
-    sheetEl.appendChild(main);
+    sheetEl.appendChild(row);
     return sheetEl;
   }
 

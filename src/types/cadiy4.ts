@@ -44,6 +44,7 @@ export interface CameraData {
   legacyDrawMode?: string | number;
   legacyLayerColorMode?: boolean;
   legacyViewingMode?: string;
+  legacyPartsNameMode?: string | number;
 }
 
 export interface SceneSnapshot {
@@ -101,6 +102,7 @@ export type ObjectType =
   | 'boolean'
   | 'screw'
   | 'steelProfile'
+  | 'wireMesh'
   | string;
 
 export interface CadiyObjectBase {
@@ -114,7 +116,7 @@ export interface CadiyObjectBase {
   locked?: boolean;
   groupId?: number;
   layerId?: number;
-  color: ColorRGB;
+  color?: ColorRGB;
   textureId?: number;
   defaultPaintId?: string;
   displayId?: number;
@@ -126,6 +128,9 @@ export interface CadiyObjectBase {
   noAggregated?: boolean;
   standardRef?: StandardRef;
   edgeCuts?: EdgeCut[];
+  sourceMaterials?: SourceMaterial[];
+  opacity?: number;
+  cellSize?: number;
 }
 
 export interface LumberObject extends CadiyObjectBase {

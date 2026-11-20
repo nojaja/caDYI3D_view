@@ -176,7 +176,8 @@
         "presetView": { "type": "string", "description": "Preset view orientation identifier (e.g. 'isometric', 'front', 'top')." },
         "legacyDrawMode": { "type": ["string", "integer"] },
         "legacyLayerColorMode": { "type": "boolean" },
-        "legacyViewingMode": { "type": "string" }
+        "legacyViewingMode": { "type": "string" },
+        "legacyPartsNameMode": { "type": ["string", "integer"], "description": "Legacy caDIY3D parts name display mode (e.g. 'NotDisplay', 'PartsName', etc.)." }
       }
     },
     "SceneSnapshot": {
@@ -245,8 +246,8 @@
         },
         "mode": {
           "type": "string",
-          "description": "Edge cut mode ('cut' for straight chamfer/angled cut, 'round' for curved fillet).",
-          "enum": ["cut", "round"]
+          "description": "Edge cut mode ('cut' for straight chamfer/angled cut, 'round' for curved fillet, 'chamfer45' for 45-degree bevel chamfer).",
+          "enum": ["cut", "round", "chamfer45"]
         },
         "faceADist": {
           "type": "number",
@@ -631,7 +632,8 @@
             "boolean",
             "merged",
             "screw",
-            "steelProfile"
+            "steelProfile",
+            "wireMesh"
           ]
         },
         "rotationDeg": {
@@ -761,7 +763,17 @@
         },
         "subType": {
           "type": "string",
-          "description": "Sub-type classification (e.g. 'sineSmall' for waveBoard, 'pvc' for tube)."
+          "description": "Sub-type classification (e.g. 'sineSmall' for waveBoard, 'pvc' for tube, 'square' for wireMesh)."
+        },
+        "cellSize": {
+          "type": "number",
+          "description": "Cell / mesh grid size index or value (for wireMesh)."
+        },
+        "opacity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Opacity factor between 0.0 (fully transparent) and 1.0 (fully opaque)."
         },
         "modelName": {
           "type": "string",

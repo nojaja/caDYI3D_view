@@ -64,12 +64,15 @@ export function formatObjectProperties(object: CadiyObject): FormattedObjectProp
   }
   if (Array.isArray(anyObj.edgeCuts) && anyObj.edgeCuts.length > 0) {
     const cutDescs = anyObj.edgeCuts.map((ec: any) => {
-      const modeStr = ec.mode === 'round' ? 'R加工' : '斜めカット';
+      const modeStr = ec.mode === 'round' ? 'R加工' : (ec.mode === 'chamfer45' ? '45°面取り' : '斜めカット');
       const distA = (ec.faceADist * 1000).toFixed(1);
       const distB = (ec.faceBDist * 1000).toFixed(1);
       return `エッジ${ec.edgeIndex}: ${modeStr} ${distA}×${distB}mm`;
     });
     processingParts.push(`エッジ加工 (${cutDescs.join(', ')})`);
+  }
+  if (object.type === 'boolean' || object.type === 'merged') {
+    processingParts.push('ブーリアン加工 (溝/切り欠き/切削)');
   }
   const processingInfo = processingParts.length > 0 ? processingParts.join(' / ') : 'なし';
 

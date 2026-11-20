@@ -105,6 +105,27 @@ export class CutListCalculator {
         widthMm = (obj.size.x === lengthMm / 1000 ? obj.size.y : obj.size.x) * 1000;
       }
 
+      // 部材自身に edgeCuts がない場合、同位置・同サイズの母材（形状加工前パーツ等）から edgeCuts を継承
+      let resolvedEdgeCuts = (obj as any).edgeCuts;
+      if ((!resolvedEdgeCuts || resolvedEdgeCuts.length === 0) && (obj.type === 'boolean' || obj.type === 'merged')) {
+        const sourceCandidate = objects.find((candidate) => {
+          if (candidate.id === obj.id) return false;
+          if (!candidate.edgeCuts || candidate.edgeCuts.length === 0) return false;
+          const sameSize =
+            Math.abs(candidate.size.x - obj.size.x) < 0.002 &&
+            Math.abs(candidate.size.y - obj.size.y) < 0.002 &&
+            Math.abs(candidate.size.z - obj.size.z) < 0.002;
+          const samePos =
+            Math.abs(candidate.position.x - obj.position.x) < 0.002 &&
+            Math.abs(candidate.position.y - obj.position.y) < 0.002 &&
+            Math.abs(candidate.position.z - obj.position.z) < 0.002;
+          return sameSize && samePos;
+        });
+        if (sourceCandidate && sourceCandidate.edgeCuts) {
+          resolvedEdgeCuts = sourceCandidate.edgeCuts;
+        }
+      }
+
       const item: CutPlanItem = {
         object: obj,
         positionMm: {
@@ -114,7 +135,7 @@ export class CutListCalculator {
         lengthMm,
         widthMm,
         isBoard: obj.type === 'board',
-        edgeCuts: (obj as any).edgeCuts,
+        edgeCuts: resolvedEdgeCuts,
       };
 
       groupMap.get(groupKey)!.items.push(item);
@@ -133,7 +154,7 @@ export class CutListCalculator {
       let usedLengthMm = 0;
       let netPartsLengthMm = 0;
       const refObj = entry.representativeObj;
-      let lumberName = refObj.standardRef?.name || refObj.name || (isBoardSheet ? '板材' : '角材');
+      let lumberName = (refObj as any).sourceMaterials?.[0]?.commentText || refObj.name || refObj.standardRef?.name || (isBoardSheet ? '板材' : '角材');
 
       if (items.length > 0) {
         usedLengthMm = Math.max(...items.map((it) => it.positionMm.z + it.lengthMm));
@@ -179,7 +200,7 @@ export class CutListCalculator {
     const unplacedObjects = objects.filter((obj) => {
       if (placedPartsIds.has(obj.id)) return false;
       if (obj.noAggregated === true || obj.dummy === true) return false;
-      const type = obj.type;
+      const type = (obj as any).sourceMaterials?.[0]?.type || obj.type;
       if (type !== 'lumber' && type !== 'board' && type !== 'cylinder' && type !== 'roundBoard') {
         return false;
       }
@@ -240,13 +261,33 @@ export class CutListCalculator {
             widthMm = Math.min(dimX, dimY);
           }
 
+          let unplacedResolvedCuts = (obj as any).edgeCuts;
+          if ((!unplacedResolvedCuts || unplacedResolvedCuts.length === 0) && (obj.type === 'boolean' || obj.type === 'merged')) {
+            const sourceCandidate = objects.find((candidate) => {
+              if (candidate.id === obj.id) return false;
+              if (!candidate.edgeCuts || candidate.edgeCuts.length === 0) return false;
+              const sameSize =
+                Math.abs(candidate.size.x - obj.size.x) < 0.002 &&
+                Math.abs(candidate.size.y - obj.size.y) < 0.002 &&
+                Math.abs(candidate.size.z - obj.size.z) < 0.002;
+              const samePos =
+                Math.abs(candidate.position.x - obj.position.x) < 0.002 &&
+                Math.abs(candidate.position.y - obj.position.y) < 0.002 &&
+                Math.abs(candidate.position.z - obj.position.z) < 0.002;
+              return sameSize && samePos;
+            });
+            if (sourceCandidate && sourceCandidate.edgeCuts) {
+              unplacedResolvedCuts = sourceCandidate.edgeCuts;
+            }
+          }
+
           items.push({
             object: obj,
             positionMm: { x: currentOffsetX, z: currentOffsetZ },
             lengthMm,
             widthMm,
             isBoard,
-            edgeCuts: (obj as any).edgeCuts,
+            edgeCuts: unplacedResolvedCuts,
           });
 
           if (isBoard) {
@@ -275,7 +316,7 @@ export class CutListCalculator {
         resultSheets.push({
           baseId: extraBaseId++,
           cutWidthMm,
-          lumberName: refObj.standardRef?.name || refObj.name || (isBoard ? '板材' : '角材'),
+          lumberName: (refObj as any).sourceMaterials?.[0]?.commentText || refObj.name || refObj.standardRef?.name || (isBoard ? '板材' : '角材'),
           layout: isBoard ? '2d' : '1d',
           sheetWidthMm,
           sheetLengthMm,
@@ -300,12 +341,17 @@ export class CutListCalculator {
     if (obj.standardRef?.name) {
       return `${obj.type}_${obj.standardRef.name}`;
     }
-    if (obj.type === 'board') {
-      return `board_${obj.name}_${Math.round(obj.size.y * 1000)}mm`;
+
+    // ブーリアンパーツの場合、母材 (sourceMaterials) の情報があればその材料種別・規格名を使用
+    const baseType = (obj as any).sourceMaterials?.[0]?.type || obj.type;
+    const baseName = (obj as any).sourceMaterials?.[0]?.commentText || obj.name;
+
+    if (baseType === 'board' || obj.type === 'board') {
+      return `board_${baseName}_${Math.round(obj.size.y * 1000)}mm`;
     }
     const cs1 = Math.round(Math.min(obj.size.x, obj.size.y) * 1000);
     const cs2 = Math.round(Math.max(obj.size.x, obj.size.y) * 1000);
-    return `${obj.type}_${obj.name}_${cs1}x${cs2}`;
+    return `${baseType}_${baseName}_${cs1}x${cs2}`;
   }
 
   /**
@@ -315,6 +361,18 @@ export class CutListCalculator {
     obj: CadiyObject,
     defaultLumberLength = 1820
   ): { widthMm: number; lengthMm: number } {
+    // -1. sourceMaterials が存在する場合はその standardSize (m -> mm) を優先参照
+    if (Array.isArray((obj as any).sourceMaterials) && (obj as any).sourceMaterials[0]?.standardSize) {
+      const ss = (obj as any).sourceMaterials[0].standardSize;
+      const sx = Math.round(Number(ss.x || 0) * 1000);
+      const sy = Math.round(Number(ss.y || 0) * 1000);
+      const sz = Math.round(Number(ss.z || 0) * 1000);
+      if (sz > 0) {
+        const sWidth = Math.max(sx, sy);
+        return { widthMm: sWidth > 0 ? sWidth : Math.round(obj.size.x * 1000), lengthMm: sz };
+      }
+    }
+
     const stdId = String(obj.standardRef?.standardId || '');
     const stdName = String(obj.standardRef?.name || obj.name || '');
     const text = `${stdId} ${stdName}`;

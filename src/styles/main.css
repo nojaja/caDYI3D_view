@@ -565,30 +565,79 @@ html, body {
 .cutlist-sheets-container {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 32px;
+}
+
+.cutplan-material-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cutplan-material-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  padding: 4px 0;
+}
+
+.cutplan-material-sheets {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .cutplan-sheet {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 4px 0;
+  box-shadow: none;
 }
 
 .cutplan-sheet-header {
   display: flex;
   justify-content: space-between;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
+  color: #6b7280;
+  margin-bottom: 2px;
+}
+
+.cutplan-sheet-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.cutplan-sheet-summary {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  min-width: 95px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #111827;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.cutplan-summary-length {
+  color: #111827;
+}
+
+.cutplan-summary-remaining {
   color: #374151;
-  margin-bottom: 8px;
 }
 
 .cutplan-canvas-main {
+  flex: 1;
+  min-width: 0;
   width: 100%;
   max-width: 900px;
-  margin: 8px auto 0;
+  margin: 0 auto;
   border: none;
   outline: none;
 }
@@ -600,6 +649,10 @@ html, body {
   display: block;
   border: none;
   outline: none;
+}
+
+.cutplan-feature-edge {
+  pointer-events: none;
 }
 
 .cutplan-dim-y,
